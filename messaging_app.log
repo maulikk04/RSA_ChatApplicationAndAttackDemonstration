@@ -1,0 +1,219 @@
+2025-05-28 23:03:31,738 - INFO - Created data directories: messaging_data
+2025-05-28 23:03:31,740 - INFO - No existing users file found
+2025-05-28 23:09:03,658 - INFO - Created data directories: messaging_data
+2025-05-28 23:09:03,659 - INFO - No existing users file found
+2025-05-28 23:09:16,759 - INFO - Registering new user: alice
+2025-05-28 23:09:16,760 - INFO - Generating RSA key pair for user: alice
+2025-05-28 23:09:16,976 - INFO - Successfully generated 2048-bit RSA keys for alice
+2025-05-28 23:09:17,014 - INFO - Users data saved successfully
+2025-05-28 23:09:17,015 - INFO - Successfully registered user: alice
+2025-05-28 23:09:43,585 - INFO - Loaded 1 existing users
+2025-05-28 23:09:43,585 - INFO - Refreshed user data from file
+2025-05-28 23:09:43,688 - INFO - Registering new user: bob
+2025-05-28 23:09:43,689 - INFO - Generating RSA key pair for user: bob
+2025-05-28 23:09:43,793 - INFO - Successfully generated 2048-bit RSA keys for bob
+2025-05-28 23:09:43,797 - INFO - Users data saved successfully
+2025-05-28 23:09:43,797 - INFO - Successfully registered user: bob
+2025-05-28 23:10:25,131 - INFO - Loaded 2 existing users
+2025-05-28 23:10:25,131 - INFO - Refreshed user data from file
+2025-05-28 23:10:25,203 - INFO - Users data saved successfully
+2025-05-28 23:10:25,203 - INFO - User alice logged in successfully
+2025-05-28 23:10:55,017 - INFO - User alice logged out
+2025-05-28 23:11:00,081 - INFO - Created data directories: messaging_data
+2025-05-28 23:11:00,083 - INFO - Loaded 2 existing users
+2025-05-28 23:11:13,912 - INFO - Loaded 2 existing users
+2025-05-28 23:11:13,913 - INFO - Refreshed user data from file
+2025-05-28 23:11:14,007 - INFO - Registering new user: alex
+2025-05-28 23:11:14,008 - INFO - Generating RSA key pair for user: alex
+2025-05-28 23:11:14,155 - INFO - Successfully generated 2048-bit RSA keys for alex
+2025-05-28 23:11:14,160 - INFO - Users data saved successfully
+2025-05-28 23:11:14,160 - INFO - Successfully registered user: alex
+2025-05-28 23:11:34,101 - INFO - Loaded 3 existing users
+2025-05-28 23:11:34,102 - INFO - Refreshed user data from file
+2025-05-28 23:11:34,174 - INFO - Users data saved successfully
+2025-05-28 23:11:34,175 - INFO - User bob logged in successfully
+2025-05-28 23:11:48,295 - INFO - Loaded 3 existing users
+2025-05-28 23:11:48,296 - INFO - Refreshed user data from file
+2025-05-28 23:11:48,368 - INFO - Users data saved successfully
+2025-05-28 23:11:48,368 - INFO - User alice logged in successfully
+2025-05-28 23:12:01,280 - INFO - Loaded 3 existing users
+2025-05-28 23:12:01,280 - INFO - Refreshed user data from file
+2025-05-28 23:12:01,354 - INFO - Users data saved successfully
+2025-05-28 23:12:01,354 - INFO - User alex logged in successfully
+2025-05-28 23:12:45,700 - INFO - User alice logged out
+2025-05-28 23:12:55,278 - INFO - Loaded 3 existing users
+2025-05-28 23:12:55,279 - INFO - Refreshed user data from file
+2025-05-28 23:12:55,350 - INFO - Users data saved successfully
+2025-05-28 23:12:55,350 - INFO - User alice logged in successfully
+2025-05-28 23:13:15,175 - INFO - User bob logged out
+2025-05-28 23:13:29,478 - INFO - Loaded 3 existing users
+2025-05-28 23:13:29,478 - INFO - Refreshed user data from file
+2025-05-28 23:13:29,555 - INFO - Users data saved successfully
+2025-05-28 23:13:29,555 - INFO - User bob logged in successfully
+2025-05-28 23:31:18,900 - INFO - Created data directories: messaging_data
+2025-05-28 23:31:18,903 - INFO - Loaded 3 existing users
+2025-05-28 23:31:27,400 - INFO - Users data saved successfully
+2025-05-28 23:31:27,401 - INFO - User alice logged in successfully
+2025-05-28 23:31:36,788 - INFO - Created data directories: messaging_data
+2025-05-28 23:31:36,823 - INFO - Loaded 3 existing users
+2025-05-28 23:31:42,210 - INFO - Users data saved successfully
+2025-05-28 23:31:42,211 - INFO - User bob logged in successfully
+2025-05-29 00:14:20,399 - INFO - Created data directories: messaging_data
+2025-05-29 00:14:20,413 - INFO - Loaded 3 existing users
+2025-05-29 00:14:20,414 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 00:14:20,414 - INFO - No existing messages file found
+2025-05-29 00:14:31,671 - INFO - Users data saved successfully
+2025-05-29 00:14:31,671 - INFO - User alice logged in successfully
+2025-05-29 00:14:43,539 - INFO - Created data directories: messaging_data
+2025-05-29 00:14:43,561 - INFO - Loaded 3 existing users
+2025-05-29 00:14:43,561 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 00:14:43,561 - INFO - No existing messages file found
+2025-05-29 00:14:49,864 - INFO - Users data saved successfully
+2025-05-29 00:14:49,864 - INFO - User bob logged in successfully
+2025-05-29 00:14:55,637 - INFO - Loaded 3 existing users
+2025-05-29 00:14:55,637 - INFO - Refreshed user data from file
+2025-05-29 00:15:56,726 - INFO - Messages saved successfully
+2025-05-29 00:15:56,726 - INFO - Message sent from alice to bob
+2025-05-29 00:16:21,645 - INFO - Messages saved successfully
+2025-05-29 00:16:21,646 - INFO - Message sent from alice to bob
+2025-05-29 00:17:24,915 - INFO - Created data directories: messaging_data
+2025-05-29 00:17:24,916 - INFO - Loaded 3 existing users
+2025-05-29 00:17:24,916 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 00:17:24,929 - INFO - Loaded existing messages
+2025-05-29 00:17:33,661 - INFO - Users data saved successfully
+2025-05-29 00:17:33,662 - INFO - User bob logged in successfully
+2025-05-29 00:18:23,430 - INFO - Loaded 3 existing users
+2025-05-29 00:18:23,430 - INFO - Refreshed user data from file
+2025-05-29 00:18:49,798 - INFO - Messages saved successfully
+2025-05-29 00:18:49,799 - INFO - Message sent from bob to alice
+2025-05-29 00:19:24,715 - INFO - Created data directories: messaging_data
+2025-05-29 00:19:24,715 - INFO - Loaded 3 existing users
+2025-05-29 00:19:24,716 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 00:19:24,760 - INFO - Loaded existing messages
+2025-05-29 00:19:32,527 - INFO - Users data saved successfully
+2025-05-29 00:19:32,527 - INFO - User alice logged in successfully
+2025-05-29 22:53:09,225 - INFO - Created data directories: messaging_data
+2025-05-29 22:53:09,242 - INFO - Loaded 3 existing users
+2025-05-29 22:53:09,243 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 22:53:09,244 - INFO - Loaded existing messages
+2025-05-29 22:53:12,614 - INFO - Created data directories: messaging_data
+2025-05-29 22:53:12,616 - INFO - Loaded 3 existing users
+2025-05-29 22:53:12,616 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 22:53:12,617 - INFO - Loaded existing messages
+2025-05-29 22:53:20,870 - INFO - Users data saved successfully
+2025-05-29 22:53:20,871 - INFO - User alice logged in successfully
+2025-05-29 22:53:54,685 - INFO - Loaded 3 existing users
+2025-05-29 22:53:54,685 - INFO - Refreshed user data from file
+2025-05-29 22:53:54,761 - INFO - Users data saved successfully
+2025-05-29 22:53:54,761 - INFO - User bob logged in successfully
+2025-05-29 22:54:02,299 - INFO - Loaded 3 existing users
+2025-05-29 22:54:02,300 - INFO - Refreshed user data from file
+2025-05-29 22:55:26,183 - ERROR - Message encryption failed: Encryption failed
+2025-05-29 22:55:26,184 - ERROR - Failed to send message: Failed to encrypt message: Encryption failed
+2025-05-29 22:55:26,185 - ERROR - Send message error: Failed to send message: Failed to encrypt message: Encryption failed
+2025-05-29 23:13:11,275 - INFO - Messages saved successfully
+2025-05-29 23:13:11,276 - INFO - Message sent from alice to bob
+2025-05-29 23:14:48,295 - INFO - User bob logged out
+2025-05-29 23:14:55,140 - INFO - Users data saved successfully
+2025-05-29 23:14:55,142 - INFO - User bob logged in successfully
+2025-05-29 23:26:35,572 - INFO - Messages saved successfully
+2025-05-29 23:26:35,573 - INFO - Message sent from bob to alice
+2025-05-29 23:26:59,627 - INFO - Loaded 3 existing users
+2025-05-29 23:26:59,627 - INFO - Refreshed user data from file
+2025-05-29 23:30:00,570 - INFO - Created data directories: messaging_data
+2025-05-29 23:30:00,571 - INFO - Loaded 3 existing users
+2025-05-29 23:30:00,572 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 23:30:00,572 - INFO - Loaded existing messages
+2025-05-29 23:30:05,141 - INFO - Users data saved successfully
+2025-05-29 23:30:05,142 - INFO - User bob logged in successfully
+2025-05-29 23:30:59,633 - INFO - Loaded 3 existing users
+2025-05-29 23:30:59,633 - INFO - Refreshed user data from file
+2025-05-29 23:42:41,303 - INFO - Created data directories: messaging_data
+2025-05-29 23:42:41,304 - INFO - Loaded 3 existing users
+2025-05-29 23:42:41,304 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 23:42:41,305 - INFO - Loaded existing messages
+2025-05-29 23:42:45,391 - INFO - Created data directories: messaging_data
+2025-05-29 23:42:45,392 - INFO - Loaded 3 existing users
+2025-05-29 23:42:45,392 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 23:42:45,392 - INFO - Loaded existing messages
+2025-05-29 23:43:11,028 - INFO - Users data saved successfully
+2025-05-29 23:43:11,028 - INFO - User alice logged in successfully
+2025-05-29 23:43:18,167 - INFO - Loaded 3 existing users
+2025-05-29 23:43:18,167 - INFO - Refreshed user data from file
+2025-05-29 23:43:18,204 - INFO - Users data saved successfully
+2025-05-29 23:43:18,204 - INFO - User bob logged in successfully
+2025-05-29 23:43:22,779 - INFO - Loaded 3 existing users
+2025-05-29 23:43:22,779 - INFO - Refreshed user data from file
+2025-05-29 23:43:35,596 - INFO - Messages saved successfully
+2025-05-29 23:43:35,597 - INFO - Message sent from alice to bob
+2025-05-29 23:47:01,039 - INFO - Messages saved successfully
+2025-05-29 23:47:01,039 - INFO - Message sent from bob to alice
+2025-05-29 23:59:45,994 - INFO - Created data directories: messaging_data
+2025-05-29 23:59:45,995 - INFO - Loaded 3 existing users
+2025-05-29 23:59:45,995 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 23:59:45,996 - INFO - No existing messages file found
+2025-05-29 23:59:52,287 - INFO - Users data saved successfully
+2025-05-29 23:59:52,287 - INFO - User alice logged in successfully
+2025-05-29 23:59:56,483 - INFO - Created data directories: messaging_data
+2025-05-29 23:59:56,501 - INFO - Loaded 3 existing users
+2025-05-29 23:59:56,502 - INFO - Created messages directory: messaging_data\messages
+2025-05-29 23:59:56,502 - INFO - No existing messages file found
+2025-05-30 00:00:02,751 - INFO - Users data saved successfully
+2025-05-30 00:00:02,751 - INFO - User bob logged in successfully
+2025-05-30 00:00:11,131 - INFO - Loaded 3 existing users
+2025-05-30 00:00:11,132 - INFO - Refreshed user data from file
+2025-05-30 00:00:23,233 - INFO - Messages saved successfully
+2025-05-30 00:00:23,233 - INFO - Message sent from alice to bob
+2025-05-30 00:01:31,068 - INFO - Created data directories: messaging_data
+2025-05-30 00:01:31,069 - INFO - Loaded 3 existing users
+2025-05-30 00:01:31,070 - INFO - Created messages directory: messaging_data\messages
+2025-05-30 00:01:31,070 - INFO - Loaded existing messages
+2025-05-30 00:01:35,979 - INFO - Users data saved successfully
+2025-05-30 00:01:35,979 - INFO - User bob logged in successfully
+2025-05-30 00:02:26,215 - INFO - Messages saved successfully
+2025-05-30 00:02:26,215 - INFO - Message sent from bob to alice
+2025-05-30 00:03:02,520 - INFO - Loaded 3 existing users
+2025-05-30 00:03:02,520 - INFO - Refreshed user data from file
+2025-05-30 00:03:14,384 - INFO - User alice logged out
+2025-05-30 00:03:27,705 - INFO - Users data saved successfully
+2025-05-30 00:03:27,706 - INFO - User alice logged in successfully
+2025-05-30 00:03:50,131 - INFO - Created data directories: messaging_data
+2025-05-30 00:03:50,141 - INFO - Loaded 3 existing users
+2025-05-30 00:03:50,141 - INFO - Created messages directory: messaging_data\messages
+2025-05-30 00:03:50,142 - INFO - Loaded existing messages
+2025-05-30 00:03:56,354 - INFO - Users data saved successfully
+2025-05-30 00:03:56,354 - INFO - User alice logged in successfully
+2025-05-30 00:09:29,295 - INFO - Loaded 3 existing users
+2025-05-30 00:09:29,296 - INFO - Refreshed user data from file
+2025-05-30 00:09:58,621 - INFO - Messages saved successfully
+2025-05-30 00:09:58,622 - INFO - Message sent from bob to alice
+2025-05-30 00:16:00,307 - INFO - Created data directories: messaging_data
+2025-05-30 00:16:00,308 - INFO - Loaded 3 existing users
+2025-05-30 00:16:00,309 - INFO - Created messages directory: messaging_data\messages
+2025-05-30 00:16:00,309 - INFO - Loaded existing messages
+2025-05-30 00:16:07,715 - INFO - Users data saved successfully
+2025-05-30 00:16:07,715 - INFO - User alice logged in successfully
+2025-05-30 00:16:12,909 - INFO - Created data directories: messaging_data
+2025-05-30 00:16:12,931 - INFO - Loaded 3 existing users
+2025-05-30 00:16:12,932 - INFO - Created messages directory: messaging_data\messages
+2025-05-30 00:16:12,933 - INFO - Loaded existing messages
+2025-05-30 00:16:18,325 - INFO - Users data saved successfully
+2025-05-30 00:16:18,326 - INFO - User bob logged in successfully
+2025-05-30 00:16:23,325 - INFO - Loaded 3 existing users
+2025-05-30 00:16:23,326 - INFO - Refreshed user data from file
+2025-05-30 00:16:38,838 - INFO - Messages saved successfully
+2025-05-30 00:16:38,838 - INFO - Message sent from alice to bob
+2025-05-30 00:17:35,367 - INFO - Messages saved successfully
+2025-05-30 00:17:35,367 - INFO - Message sent from bob to alice
+2025-05-31 00:10:10,147 - INFO - Created data directories: messaging_data
+2025-05-31 00:10:10,168 - INFO - Loaded 3 existing users
+2025-05-31 00:10:10,170 - INFO - Created messages directory: messaging_data\messages
+2025-05-31 00:10:10,194 - INFO - Loaded existing messages
+2025-05-31 00:10:30,889 - INFO - Users data saved successfully
+2025-05-31 00:10:30,890 - INFO - User alice logged in successfully
+2025-05-31 19:42:35,440 - INFO - Created data directories: messaging_data
+2025-05-31 19:42:35,454 - INFO - Loaded 3 existing users
+2025-05-31 19:42:35,455 - INFO - Created messages directory: messaging_data\messages
+2025-05-31 19:42:35,470 - INFO - Loaded existing messages
+2025-05-31 19:42:40,749 - INFO - Users data saved successfully
+2025-05-31 19:42:40,752 - INFO - User alice logged in successfully
