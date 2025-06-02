@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Messaging Manager Module
-Handles encrypted messaging between users using RSA encryption
+Handles encrypted messaging between users using RSA encryption with double encryption
 """
 
 import os
@@ -94,14 +94,14 @@ class MessageManager:
         users = sorted([user1, user2])
         return f"{users[0]}_{users[1]}"
     
-    def _encrypt_message(self, message, recipient_public_key_pem, sender_username):
+    def _encrypt_message(self, message, public_key_pem, username):
         """
-        Encrypt message using recipient's public key
+        Encrypt message using provided public key
         
         Args:
             message (str): Message to encrypt
-            recipient_public_key_pem (bytes): Recipient's public key in PEM format
-            sender_username (str): Username of the sender
+            public_key_pem (bytes): Public key in PEM format
+            username (str): Username for logging purposes
             
         Returns:
             bytes: Encrypted message
@@ -110,14 +110,30 @@ class MessageManager:
             ValueError: If encryption fails
         """
         try:
-            print(f"🔐 Encrypting message using {sender_username}'s recipient public key...")
+            print(f"🔐 Encrypting message using {username}'s public key...")
             
-            # Load recipient's public key
+            # Load public key
             public_key = serialization.load_pem_public_key(
-                recipient_public_key_pem,
+                public_key_pem,
                 backend=default_backend()
             )
             
+             # Calculate maximum message length for OAEP with SHA-256
+            key_size_bytes = public_key.key_size // 8  # Convert bits to bytes
+            hash_size = 32  # SHA-256 hash size in bytes
+            max_message_length = key_size_bytes - 2 - (2 * hash_size)
+            
+            # Check message length
+            message_bytes = message.encode('utf-8')
+            if len(message_bytes) > max_message_length:
+                raise ValueError(
+                    f"Message too long for RSA encryption. "
+                    f"Maximum length: {max_message_length} bytes, "
+                    f"Your message: {len(message_bytes)} bytes. "
+                    f"Consider breaking your message into smaller parts."
+                )
+        
+
             # Encrypt the message
             encrypted_message = public_key.encrypt(
                 message.encode('utf-8'),
@@ -128,38 +144,39 @@ class MessageManager:
                 )
             )
             
-            print(f"✅ Message encrypted successfully!")
+            print(f"✅ Message encrypted successfully using {username}'s public key!")
             return encrypted_message
             
         except Exception as e:
-            logger.error(f"Message encryption failed: {e}")
-            raise ValueError(f"Failed to encrypt message: {e}")
+            logger.error(f"Message encryption failed for {username}: {e}")
+            raise ValueError(f"Failed to encrypt message for {username}: {e}")
     
-    def _decrypt_message(self, encrypted_message, private_key_pem, password, recipient_username):
+    def _decrypt_message(self, encrypted_message, private_key_pem, password=None, username=None):
         """
-        Decrypt message using recipient's private key
+        Decrypt message using private key
         
         Args:
             encrypted_message (bytes): Encrypted message
-            private_key_pem (bytes): Recipient's private key in PEM format
-            password (str): Password to decrypt private key
-            recipient_username (str): Username of the recipient
+            private_key_pem (bytes): Private key (PEM format or already decrypted)
+            password (str, optional): Password to decrypt private key
+            username (str, optional): Username for logging purposes
             
         Returns:
             str: Decrypted message
-            
-        Raises:
-            ValueError: If decryption fails
         """
         try:
-            print(f"🔓 Decrypting message using {recipient_username}'s private key...")
+            print(f"🔓 Decrypting message for {username}...")
             
-            # Load recipient's private key
-            private_key = serialization.load_pem_private_key(
-                private_key_pem,
-                password=password.encode('utf-8'),
-                backend=default_backend()
-            )
+            # If private_key_pem is already a decrypted key object, use it directly
+            if hasattr(private_key_pem, 'decrypt'):
+                private_key = private_key_pem
+            else:
+                # Load private key
+                private_key = serialization.load_pem_private_key(
+                    private_key_pem,
+                    password=password.encode('utf-8') if password else None,
+                    backend=default_backend()
+                )
             
             # Decrypt the message
             decrypted_message = private_key.decrypt(
@@ -171,22 +188,23 @@ class MessageManager:
                 )
             )
             
-            print(f"✅ Message decrypted successfully!")
+            print(f"✅ Message decrypted successfully for {username}!")
             return decrypted_message.decode('utf-8')
             
         except Exception as e:
-            logger.error(f"Message decryption failed: {e}")
-            raise ValueError(f"Failed to decrypt message: {e}")
+            logger.error(f"Message decryption failed for {username}: {e}")
+            raise ValueError(f"Failed to decrypt message for {username}: {e}")
     
-    def send_message(self, sender_username, recipient_username, message, recipient_public_key, sender_password=None):
+    def send_message(self, sender_username, recipient_username, message, recipient_public_key, sender_public_key, sender_password=None):
         """
-        Send an encrypted message from sender to recipient
+        Send a double-encrypted message from sender to recipient
         
         Args:
             sender_username (str): Username of the sender
             recipient_username (str): Username of the recipient
             message (str): Message to send
             recipient_public_key (bytes): Recipient's public key in PEM format
+            sender_public_key (bytes): Sender's public key in PEM format
             sender_password (str, optional): Sender's password (for future use)
             
         Returns:
@@ -204,15 +222,16 @@ class MessageManager:
             # Reload messages before sending to ensure we have the latest state
             self._reload_messages()
             
-            # Encrypt the message using recipient's public key
-            encrypted_message = self._encrypt_message(message, recipient_public_key, sender_username)
+            # Double encryption: encrypt with both recipient's and sender's public keys
+            encrypted_for_recipient = self._encrypt_message(message, recipient_public_key, recipient_username)
+            encrypted_for_sender = self._encrypt_message(message, sender_public_key, sender_username)
             
-            # Create message data - now storing both encrypted and original message
+            # Create message data with double encryption
             message_data = {
                 'sender': sender_username,
                 'recipient': recipient_username,
-                'encrypted_message': encrypted_message.hex(),  # Store as hex string for recipient
-                'original_message': message,  # Store original message for sender's reference
+                'encrypted_for_recipient': encrypted_for_recipient.hex(),  # For recipient to decrypt
+                'encrypted_for_sender': encrypted_for_sender.hex(),      # For sender to decrypt
                 'timestamp': datetime.now().isoformat(),
                 'message_id': len(self.messages) + 1
             }
@@ -283,7 +302,7 @@ class MessageManager:
     
     def decrypt_message_for_user(self, message_data, username, private_key_pem, password):
         """
-        Decrypt a specific message for a user
+        Decrypt a specific message for a user using double encryption
         
         Args:
             message_data (dict): Message data dictionary
@@ -295,15 +314,20 @@ class MessageManager:
             str: Decrypted message
             
         Raises:
-            ValueError: If user is not the recipient or decryption fails
+            ValueError: If user is not authorized or decryption fails
         """
         try:
-            # Check if user is the recipient
-            if message_data['recipient'] != username:
-                raise ValueError("You can only decrypt messages sent to you")
-            
-            # Get encrypted message from hex
-            encrypted_message = bytes.fromhex(message_data['encrypted_message'])
+            # Determine which encrypted version to use based on user role
+            if message_data['recipient'] == username:
+                # User is the recipient, use encrypted_for_recipient
+                encrypted_message = bytes.fromhex(message_data['encrypted_for_recipient'])
+                print(f"Decrypting message as recipient: {username}")
+            elif message_data['sender'] == username:
+                # User is the sender, use encrypted_for_sender
+                encrypted_message = bytes.fromhex(message_data['encrypted_for_sender'])
+                print(f"Decrypting message as sender: {username}")
+            else:
+                raise ValueError("You are not authorized to decrypt this message")
             
             # Decrypt the message
             decrypted_message = self._decrypt_message(
@@ -320,33 +344,30 @@ class MessageManager:
             raise ValueError(f"Failed to decrypt message: {e}")
     
     def get_message_content_for_user(self, message_data, username, private_key_pem=None, password=None):
-        """
-        Get message content for a user (either original if sender, or decrypt if recipient)
-        
-        Args:
-            message_data (dict): Message data dictionary
-            username (str): Username requesting the message
-            private_key_pem (bytes, optional): User's private key in PEM format
-            password (str, optional): Password to decrypt private key
-            
-        Returns:
-            str: Message content
-        """
+        """Get message content for a user using double encryption"""
         try:
-            # If user is the sender, return the original message
-            if message_data['sender'] == username:
-                return message_data.get('original_message', '[Message content not available]')
-            
-            # If user is the recipient, decrypt the message
-            elif message_data['recipient'] == username:
-                if private_key_pem and password:
-                    return self.decrypt_message_for_user(message_data, username, private_key_pem, password)
-                else:
-                    return '[Private key or password not provided for decryption]'
-            
-            # If user is neither sender nor recipient
-            else:
+            # Check if user is authorized (sender or recipient)
+            if username not in [message_data['sender'], message_data['recipient']]:
                 return '[You are not authorized to view this message]'
+            
+            # If no private key provided, cannot decrypt
+            if not private_key_pem:
+                return '[Message decryption failed - no private key available]'
+            
+            # Use the appropriate encrypted version based on user role
+            if hasattr(private_key_pem, 'decrypt'):
+                # If private_key_pem is actually a decrypted key object
+                if message_data['recipient'] == username:
+                    encrypted_message = bytes.fromhex(message_data['encrypted_for_recipient'])
+                elif message_data['sender'] == username:
+                    encrypted_message = bytes.fromhex(message_data['encrypted_for_sender'])
+                else:
+                    return '[You are not authorized to view this message]'
+                
+                return self._decrypt_message(encrypted_message, private_key_pem, None, username)
+            else:
+                # Use the decrypt_message_for_user method
+                return self.decrypt_message_for_user(message_data, username, private_key_pem, password)
                 
         except Exception as e:
             logger.error(f"Failed to get message content for user {username}: {e}")
