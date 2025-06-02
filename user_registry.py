@@ -183,7 +183,7 @@ class UserRegistry:
             password (str): User's password
             
         Returns:
-            bool: True if login successful
+            tuple: (bool, str) - (Success status, password if successful)
             
         Raises:
             ValueError: If invalid username or password
@@ -208,7 +208,7 @@ class UserRegistry:
             self._save_users()
             
             logger.info(f"User {username} logged in successfully")
-            return True
+            return True, password  # Return password for session key decryption
             
         except Exception as e:
             logger.error(f"Login failed: {e}")
