@@ -63,9 +63,12 @@ class CLIInterface:
             username = input("Enter username: ").strip()
             password = getpass.getpass("Enter password: ")
             
-            self.registry.login(username, password)
-            print_success(f"Welcome back, {username}!")
-            
+            success, password = self.registry.login(username, password)
+            if success:
+                # Initialize messaging session with user's password
+                self.messaging.initialize_session(username, password)
+                print_success(f"Welcome back, {username}!")
+        
         except ValueError as e:
             print_error(f"Login failed: {e}")
     
@@ -88,6 +91,8 @@ class CLIInterface:
     def handle_logout(self):
         """Handle user logout"""
         if self.registry.logout():
+            # Clear messaging interface session
+            self.messaging.clear_session()
             print_success("Logged out successfully!")
         else:
             print("No user was logged in.")
