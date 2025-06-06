@@ -13,6 +13,7 @@ from display_utils import (
     display_menu, get_user_choice, print_header, print_success,
     print_error, print_goodbye
 )
+from attack_interface import AttackInterface
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +45,28 @@ class CLIInterface:
             email = email if email else None
             
             try:
-                key_size = int(input("Enter key size (default 2048): ").strip() or "2048")
-                if key_size < 1024:
-                    print("Warning: Key size less than 1024 is not recommended")
+                key_size_input = input("Enter key size (default 2048, min 64 for educational purposes): ").strip()
+                key_size = int(key_size_input) if key_size_input else 2048
+                
+                if key_size < 64:
+                    print("⚠️  Key size must be at least 64 bits")
+                    return
+                elif key_size < 1024:
+                    print(f"🎓 Educational mode: Generating {key_size}-bit RSA keys")
+                    print("⚠️  Note: Keys smaller than 1024 bits are insecure and for learning only!")
+                    confirm = input("Continue? (y/n): ").strip().lower()
+                    if confirm != 'y':
+                        return
+                elif key_size > 4096:
+                    print(f"⚠️  Large key size ({key_size} bits) will take longer to generate")
+                    confirm = input("Continue? (y/n): ").strip().lower()
+                    if confirm != 'y':
+                        return
+                        
             except ValueError:
                 key_size = 2048
             
+            print(f"🔐 Generating {key_size}-bit RSA key pair...")
             user = self.registry.register_user(username, password, email, key_size)
             print_success(f"User '{username}' registered successfully!")
             display_user_details(self.registry, username)
@@ -159,9 +176,12 @@ class CLIInterface:
             # List conversations
             self.messaging.handle_list_conversations()
         elif choice == '9':
+             #RSA Attack Demonstration
+             self.run_attack_demonstration()
+        elif choice == '10':
             # Logout
             self.handle_logout()
-        elif choice == '10':
+        elif choice == '11':
             # Exit
             return False
         else:
@@ -199,3 +219,14 @@ class CLIInterface:
                 logger.error(f"Unexpected error in CLI: {e}")
         
         print_goodbye()
+    
+    def run_attack_demonstration(self):
+        """Run RSA attack demonstration"""
+        try:
+            attack_interface = AttackInterface()
+            attack_interface.run_attack_interface()
+            
+        except Exception as e:
+            logger.error(f"Attack demonstration failed: {e}")
+            print(f"❌ Failed to start attack demonstration: {e}")
+            input("Press Enter to continue...")
