@@ -2,16 +2,181 @@
 """
 RSA Key Management Module
 Handles RSA key generation, serialization, and loading operations
+Supports manual key generation for educational purposes (smaller key sizes)
 """
 
 import logging
+import random
+import math
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateNumbers, RSAPublicNumbers
 
 logger = logging.getLogger(__name__)
 
 class RSAKeyManager:
     """Handles RSA key generation, serialization, and validation"""
+    
+    @staticmethod
+    def _is_prime(n, k=10):
+        """
+        Miller-Rabin primality test
+        
+        Args:
+            n (int): Number to test
+            k (int): Number of rounds (default: 10)
+            
+        Returns:
+            bool: True if n is probably prime, False if composite
+        """
+        if n < 2:
+            return False
+        if n == 2 or n == 3:
+            return True
+        if n % 2 == 0:
+            return False
+        
+        # Write n-1 as d * 2^r
+        r = 0
+        d = n - 1
+        while d % 2 == 0:
+            r += 1
+            d //= 2
+        
+        # Perform k rounds of testing
+        for _ in range(k):
+            a = random.randrange(2, n - 1)
+            x = pow(a, d, n)
+            
+            if x == 1 or x == n - 1:
+                continue
+                
+            for _ in range(r - 1):
+                x = pow(x, 2, n)
+                if x == n - 1:
+                    break
+            else:
+                return False
+        
+        return True
+    
+    @staticmethod
+    def _generate_prime(bits):
+        """
+        Generate a prime number with specified bit length
+        
+        Args:
+            bits (int): Desired bit length
+            
+        Returns:
+            int: A prime number
+        """
+        while True:
+            # Generate a random odd number with the desired bit length
+            candidate = random.getrandbits(bits)
+            # Ensure it's odd and has the right bit length
+            candidate |= (1 << bits - 1) | 1
+            
+            if RSAKeyManager._is_prime(candidate):
+                return candidate
+    
+    @staticmethod
+    def _extended_gcd(a, b):
+        """
+        Extended Euclidean Algorithm
+        
+        Args:
+            a, b (int): Input integers
+            
+        Returns:
+            tuple: (gcd, x, y) where gcd = ax + by
+        """
+        if a == 0:
+            return b, 0, 1
+        
+        gcd, x1, y1 = RSAKeyManager._extended_gcd(b % a, a)
+        x = y1 - (b // a) * x1
+        y = x1
+        
+        return gcd, x, y
+    
+    @staticmethod
+    def _mod_inverse(e, phi_n):
+        """
+        Calculate modular multiplicative inverse
+        
+        Args:
+            e (int): Public exponent
+            phi_n (int): Euler's totient function result
+            
+        Returns:
+            int: Modular inverse of e modulo phi_n
+            
+        Raises:
+            ValueError: If inverse doesn't exist
+        """
+        gcd, x, _ = RSAKeyManager._extended_gcd(e, phi_n)
+        if gcd != 1:
+            raise ValueError("Modular inverse does not exist")
+        return x % phi_n
+    
+    @staticmethod
+    def _generate_manual_rsa_keys(key_size):
+        """
+        Manually generate RSA key pair for educational purposes
+        
+        Args:
+            key_size (int): Size of the RSA key in bits
+            
+        Returns:
+            tuple: (private_key_object, public_key_object)
+        """
+        logger.warning(f"Generating {key_size}-bit RSA keys manually for educational purposes")
+        
+        # Step 1: Generate two distinct prime numbers
+        p_bits = key_size // 2
+        q_bits = key_size - p_bits
+        
+        p = RSAKeyManager._generate_prime(p_bits)
+        q = RSAKeyManager._generate_prime(q_bits)
+        
+        # Ensure p != q
+        while p == q:
+            q = RSAKeyManager._generate_prime(q_bits)
+        
+        # Step 2: Compute n = p * q
+        n = p * q
+        
+        # Step 3: Compute Euler's totient function
+        phi_n = (p - 1) * (q - 1)
+        
+        # Step 4: Choose public exponent e
+        e = 65537  # Common choice
+        while math.gcd(e, phi_n) != 1:
+            e = random.randrange(3, phi_n, 2)  # Keep it odd
+        
+        # Step 5: Compute private exponent d
+        d = RSAKeyManager._mod_inverse(e, phi_n)
+        
+        # Step 6: Compute CRT parameters
+        dmp1 = d % (p - 1)
+        dmq1 = d % (q - 1)
+        iqmp = RSAKeyManager._mod_inverse(q, p)
+        
+        # Create RSA key objects using cryptography library structures
+        public_numbers = RSAPublicNumbers(e, n)
+        private_numbers = RSAPrivateNumbers(
+            p=p, q=q, d=d, dmp1=dmp1, dmq1=dmq1, iqmp=iqmp,
+            public_numbers=public_numbers
+        )
+        
+        private_key = private_numbers.private_key()
+        public_key = private_key.public_key()
+        
+        logger.info(f"Successfully generated {key_size}-bit RSA keys manually")
+        logger.info(f"Key parameters: p={p_bits} bits, q={q_bits} bits, n={n.bit_length()} bits")
+        
+        return private_key, public_key
     
     @staticmethod
     def generate_key_pair(key_size=2048):
@@ -28,12 +193,20 @@ class RSAKeyManager:
             Exception: If key generation fails
         """
         try:
+            # For educational purposes, allow smaller key sizes with manual generation
+            if key_size < 1024:
+                logger.warning(f"Using manual RSA key generation for {key_size}-bit keys")
+                logger.warning("Small key sizes are INSECURE and for educational use only!")
+                return RSAKeyManager._generate_manual_rsa_keys(key_size)
+            
+            # Use the standard library for secure key sizes
             private_key = rsa.generate_private_key(
                 public_exponent=65537,
                 key_size=key_size
             )
             public_key = private_key.public_key()
             return private_key, public_key
+            
         except Exception as e:
             logger.error(f"Failed to generate RSA key pair: {e}")
             raise
@@ -132,4 +305,26 @@ class RSAKeyManager:
             return serialization.load_pem_public_key(pem_data)
         except Exception as e:
             logger.error(f"Failed to load public key: {e}")
+            raise
+
+    @staticmethod
+    def get_key_parameters(public_key):
+        """
+        Extract RSA key parameters for analysis
+        
+        Args:
+            public_key: RSA public key object
+            
+        Returns:
+            dict: Dictionary containing n, e, and key size
+        """
+        try:
+            public_numbers = public_key.public_numbers()
+            return {
+                'n': public_numbers.n,
+                'e': public_numbers.e,
+                'key_size': public_numbers.n.bit_length()
+            }
+        except Exception as e:
+            logger.error(f"Failed to extract key parameters: {e}")
             raise
