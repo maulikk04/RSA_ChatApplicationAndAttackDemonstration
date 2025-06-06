@@ -3,7 +3,7 @@
 Display Utilities Module
 Handles user interface display functions and formatting
 """
-
+import os
 def display_user_details(registry, username):
     """
     Display detailed information about a user
@@ -98,8 +98,9 @@ def display_menu(is_logged_in):
         print("6. View my messages")
         print("7. View conversation")
         print("8. List conversations")
-        print("9. Logout")
-        print("10. Exit")
+        print("9. RSA Attack Demonstration")
+        print("10. Logout")
+        print("11. Exit")
 
 def get_user_choice(is_logged_in):
     """
@@ -116,15 +117,14 @@ def get_user_choice(is_logged_in):
     else:
         return input("\nEnter your choice (1-10): ").strip()
 
-def print_header():
+def print_header(heading=None):
     """Print application header"""
-    print("RSA CLI Messaging System - User Registration & Authentication")
+    print(f"RSA CLI Messaging System - {heading}")
     print("=" * 60)
 
 def print_success(message):
     """
     Print success message with checkmark
-    
     Args:
         message (str): Success message to display
     """
@@ -142,3 +142,7 @@ def print_error(message):
 def print_goodbye():
     """Print goodbye message"""
     print("Goodbye!")
+
+def clear_screen():
+    """Clear the terminal screen"""
+    os.system('cls' if os.name == 'nt' else 'clear')
