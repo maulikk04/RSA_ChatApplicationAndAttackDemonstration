@@ -26,6 +26,7 @@ class RSAAttacker:
         """Initialize RSA Attacker"""
         self.attack_results = []
         self.timing_results = {}
+        self.hastad_results = []  # Add this line
         
     def trial_division_factorization(self, n, max_attempts=1000000):
         """
@@ -483,3 +484,202 @@ class RSAAttacker:
             print(f"{key_size:<10} {status:<10} {method:<15} {time_taken:<12} {factors:<30}")
         
         print("-" * 100)
+    
+    def hastad_broadcast_attack(self, ciphertexts, moduli, e=3):
+        """
+        Implements Hastad's broadcast attack on RSA with improved precision and validation
+        
+        Args:
+            ciphertexts (list): List of ciphertext values
+            moduli (list): List of RSA moduli (n values)
+            e (int): Public exponent (default: 3)
+            
+        Returns:
+            tuple: (plaintext, time_taken) or (None, time_taken)
+        """
+        try:
+            start_time = time.time()
+            
+            if len(ciphertexts) < e:
+                print(f"❌ Need at least {e} ciphertexts for e={e}, but only {len(ciphertexts)} provided")
+                return None, time.time() - start_time
+                
+            # Validate that moduli are pairwise coprime
+            for i in range(len(moduli)):
+                for j in range(i + 1, len(moduli)):
+                    if math.gcd(moduli[i], moduli[j]) != 1:
+                        print(f"❌ Moduli must be pairwise coprime! Found GCD({moduli[i]}, {moduli[j]}) ≠ 1")
+                        return None, time.time() - start_time
+
+            # Chinese Remainder Theorem implementation
+            def chinese_remainder(residues, moduli):
+                total = 0
+                product = 1
+                
+                for modulus in moduli:
+                    product *= modulus
+                
+                for residue, modulus in zip(residues, moduli):
+                    p = product // modulus
+                    total += residue * p * pow(p, -1, modulus)
+                
+                return total % product
+            
+            # Binary search for eth root
+            def find_eth_root(x, e):
+                """Find eth root using binary search"""
+                left = 0
+                right = x
+                
+                while left <= right:
+                    mid = (left + right) // 2
+                    pow_mid = pow(mid, e)
+                    
+                    if pow_mid == x:
+                        return mid
+                    elif pow_mid < x:
+                        left = mid + 1
+                    else:
+                        right = mid - 1
+                        
+                # Return the closest value
+                return right
+            
+            # Solve using CRT
+            x = chinese_remainder(ciphertexts, moduli)
+            
+            # Find eth root using binary search
+            plaintext = find_eth_root(x, e)
+            
+            # Verify the solution against all ciphertexts
+            valid = True
+            for c, n in zip(ciphertexts, moduli):
+                if pow(plaintext, e, n) != c:
+                    valid = False
+                    break
+            
+            if valid:
+                return plaintext, time.time() - start_time
+            
+            return None, time.time() - start_time
+            
+        except Exception as e:
+            logger.error(f"Hastad attack failed: {e}")
+            return None, time.time() - start_time
+    
+    def demonstrate_hastad_attack(self, message_int, e=3, num_keys=3):
+        """
+        Demonstrate Hastad's broadcast attack with improved validation and verification
+        
+        Args:
+            message_int (int): Message to encrypt (as integer)
+            e (int): Public exponent (default: 3)
+            num_keys (int): Number of different keys to generate (default: 3)
+            
+        Returns:
+            dict: Attack results
+        """
+        try:
+            print(f"\n🎯 Starting Hastad's Broadcast Attack Demonstration")
+            print(f"   Public exponent (e): {e}")
+            print(f"   Number of keys: {num_keys}")
+            
+            results = {
+                'timestamp': datetime.now().isoformat(),
+                'public_exponent': e,
+                'num_keys': num_keys,
+                'original_message': message_int,
+                'successful': False,
+                'validation_details': {}
+            }
+            
+            # Generate multiple key pairs
+            print("\n🔑 Generating RSA keys...")
+            from rsa_key_manager import RSAKeyManager
+            
+            public_keys = []
+            moduli = []
+            ciphertexts = []
+            
+            # Ensure message is smaller than all moduli
+            max_message_bits = message_int.bit_length()
+            key_size = max(1024, max_message_bits * 3)  # Ensure key size is sufficient
+            
+            print(f"   Using {key_size}-bit keys (message is {max_message_bits} bits)")
+            
+            for i in range(num_keys):
+                while True:
+                    # Generate key with specified public exponent
+                    private_key, public_key = RSAKeyManager.generate_key_pair(
+                        key_size=key_size,
+                        public_exponent=e
+                    )
+                    
+                    n = public_key.public_numbers().n
+                    
+                    # Verify this modulus is coprime with existing moduli
+                    if all(math.gcd(n, existing_n) == 1 for existing_n in moduli):
+                        break
+                    print(f"   ⚠️  Regenerating key {i+1} due to non-coprime modulus")
+                
+                public_keys.append(public_key)
+                moduli.append(n)
+                
+                # Encrypt message
+                ciphertext = pow(message_int, e, n)
+                ciphertexts.append(ciphertext)
+                
+                print(f"   ✅ Key pair {i+1} generated (n={n})")
+                print(f"      Ciphertext: {ciphertext}")
+            
+            # Verify message is smaller than all moduli
+            for i, n in enumerate(moduli, 1):
+                if message_int >= n:
+                    print(f"⚠️  Warning: Message is larger than modulus {i}")
+                    results['validation_details'][f'modulus_{i}_check'] = False
+                else:
+                    results['validation_details'][f'modulus_{i}_check'] = True
+            
+            # Verify moduli are pairwise coprime
+            for i in range(len(moduli)):
+                for j in range(i + 1, len(moduli)):
+                    gcd = math.gcd(moduli[i], moduli[j])
+                    results['validation_details'][f'coprime_check_{i+1}_{j+1}'] = gcd == 1
+            
+            print("\n🚀 Performing Hastad's attack...")
+            recovered_message, time_taken = self.hastad_broadcast_attack(
+                ciphertexts=ciphertexts,
+                moduli=moduli,
+                e=e
+            )
+            
+            results['attack_time'] = time_taken
+            
+            if recovered_message is not None:
+                results['successful'] = True
+                results['recovered_message'] = recovered_message
+                print(f"\n✅ Attack successful!")
+                print(f"   Original message: {message_int}")
+                print(f"   Recovered message: {recovered_message}")
+                print(f"   Time taken: {time_taken:.4f} seconds")
+                
+                # Detailed verification
+                print("\n🔍 Verification against all ciphertexts:")
+                for i, (c, n) in enumerate(zip(ciphertexts, moduli), 1):
+                    computed = pow(recovered_message, e, n)
+                    matches = computed == c
+                    results['validation_details'][f'ciphertext_{i}_verification'] = matches
+                    print(f"   Ciphertext {i}: {'✅ Verified' if matches else '❌ Mismatch'}")
+            else:
+                print(f"\n❌ Attack failed")
+                print(f"   Time taken: {time_taken:.4f} seconds")
+            
+            self.hastad_results.append(results)
+            return results
+            
+        except Exception as e:
+            logger.error(f"Hastad demonstration failed: {e}")
+            return {
+                'successful': False,
+                'error': str(e)
+            }

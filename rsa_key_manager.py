@@ -121,70 +121,82 @@ class RSAKeyManager:
         return x % phi_n
     
     @staticmethod
-    def _generate_manual_rsa_keys(key_size):
+    def _generate_manual_rsa_keys(key_size, public_exponent=65537):
         """
         Manually generate RSA key pair for educational purposes
         
         Args:
             key_size (int): Size of the RSA key in bits
+            public_exponent (int): Public exponent e (default: 65537)
             
         Returns:
             tuple: (private_key_object, public_key_object)
         """
         logger.warning(f"Generating {key_size}-bit RSA keys manually for educational purposes")
         
-        # Step 1: Generate two distinct prime numbers
-        p_bits = key_size // 2
-        q_bits = key_size - p_bits
-        
-        p = RSAKeyManager._generate_prime(p_bits)
-        q = RSAKeyManager._generate_prime(q_bits)
-        
-        # Ensure p != q
-        while p == q:
-            q = RSAKeyManager._generate_prime(q_bits)
-        
-        # Step 2: Compute n = p * q
-        n = p * q
-        
-        # Step 3: Compute Euler's totient function
-        phi_n = (p - 1) * (q - 1)
-        
-        # Step 4: Choose public exponent e
-        e = 65537  # Common choice
-        while math.gcd(e, phi_n) != 1:
-            e = random.randrange(3, phi_n, 2)  # Keep it odd
-        
-        # Step 5: Compute private exponent d
-        d = RSAKeyManager._mod_inverse(e, phi_n)
-        
-        # Step 6: Compute CRT parameters
-        dmp1 = d % (p - 1)
-        dmq1 = d % (q - 1)
-        iqmp = RSAKeyManager._mod_inverse(q, p)
-        
-        # Create RSA key objects using cryptography library structures
-        public_numbers = RSAPublicNumbers(e, n)
-        private_numbers = RSAPrivateNumbers(
-            p=p, q=q, d=d, dmp1=dmp1, dmq1=dmq1, iqmp=iqmp,
-            public_numbers=public_numbers
-        )
-        
-        private_key = private_numbers.private_key()
-        public_key = private_key.public_key()
-        
-        logger.info(f"Successfully generated {key_size}-bit RSA keys manually")
-        logger.info(f"Key parameters: p={p_bits} bits, q={q_bits} bits, n={n.bit_length()} bits")
-        
-        return private_key, public_key
+        while True:  # Keep trying until we find suitable primes
+            try:
+                # Step 1: Generate two distinct prime numbers
+                p_bits = key_size // 2
+                q_bits = key_size - p_bits
+                
+                # Generate primes that satisfy: gcd(e, p-1) = 1 and gcd(e, q-1) = 1
+                while True:
+                    p = RSAKeyManager._generate_prime(p_bits)
+                    if math.gcd(public_exponent, p - 1) == 1:
+                        break
+                
+                while True:
+                    q = RSAKeyManager._generate_prime(q_bits)
+                    if q != p and math.gcd(public_exponent, q - 1) == 1:
+                        break
+                
+                # Step 2: Compute n = p * q
+                n = p * q
+                
+                # Step 3: Compute Euler's totient function
+                phi_n = (p - 1) * (q - 1)
+                
+                # Step 4: Verify public exponent e is coprime with phi_n
+                if math.gcd(public_exponent, phi_n) != 1:
+                    continue  # Try again with new primes
+                
+                # Step 5: Compute private exponent d
+                d = RSAKeyManager._mod_inverse(public_exponent, phi_n)
+                
+                # Step 6: Compute CRT parameters
+                dmp1 = d % (p - 1)
+                dmq1 = d % (q - 1)
+                iqmp = RSAKeyManager._mod_inverse(q, p)
+                
+                # Create RSA key objects using cryptography library structures
+                public_numbers = RSAPublicNumbers(public_exponent, n)
+                private_numbers = RSAPrivateNumbers(
+                    p=p, q=q, d=d, dmp1=dmp1, dmq1=dmq1, iqmp=iqmp,
+                    public_numbers=public_numbers
+                )
+                
+                private_key = private_numbers.private_key()
+                public_key = private_key.public_key()
+                
+                logger.info(f"Successfully generated {key_size}-bit RSA keys manually")
+                logger.info(f"Key parameters: p={p_bits} bits, q={q_bits} bits, n={n.bit_length()} bits, e={public_exponent}")
+                
+                return private_key, public_key
+                
+            except Exception as e:
+                if "inverse does not exist" in str(e):
+                    continue  # Try again with new primes
+                raise
     
     @staticmethod
-    def generate_key_pair(key_size=2048):
+    def generate_key_pair(key_size=2048, public_exponent=65537):
         """
         Generate RSA key pair
         
         Args:
             key_size (int): Size of the RSA key in bits (default: 2048)
+            public_exponent (int): Public exponent e (default: 65537)
             
         Returns:
             tuple: (private_key, public_key)
@@ -197,11 +209,11 @@ class RSAKeyManager:
             if key_size < 1024:
                 logger.warning(f"Using manual RSA key generation for {key_size}-bit keys")
                 logger.warning("Small key sizes are INSECURE and for educational use only!")
-                return RSAKeyManager._generate_manual_rsa_keys(key_size)
+                return RSAKeyManager._generate_manual_rsa_keys(key_size, public_exponent)
             
             # Use the standard library for secure key sizes
             private_key = rsa.generate_private_key(
-                public_exponent=65537,
+                public_exponent=public_exponent,
                 key_size=key_size
             )
             public_key = private_key.public_key()
