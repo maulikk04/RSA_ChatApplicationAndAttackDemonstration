@@ -29,7 +29,8 @@ class AttackInterface:
         menu_options = [
             "1. Single Key Attack",
             "2. Benchmark Different Key Sizes",
-            "3. View Previous Results",
+            "3. Hastad's Broadcast Attack",  # Add this line
+            "4. View Previous Results",
             "0. Back to Main Menu"
         ]
         
@@ -48,7 +49,9 @@ class AttackInterface:
                     self.single_key_attack()
                 elif choice == '2':
                     self.benchmark_key_sizes()
-                elif choice == '3':
+                elif choice == '3':  # Add this block
+                    self.hastad_attack_demo()
+                elif choice == '4':
                     self.view_previous_results()
                 elif choice == '0':
                     break
@@ -232,6 +235,379 @@ class AttackInterface:
             print(f"❌ Failed to load results: {e}")
         
         input("\nPress Enter to continue...")
+    
+    def hastad_attack_demo(self):
+        """Demonstrate Hastad's broadcast attack"""
+        clear_screen()
+        print_header("HASTAD'S BROADCAST ATTACK DEMONSTRATION")
+        
+        try:
+            print("\nHastad's broadcast attack exploits RSA when:")
+            print("1. The same message is encrypted multiple times")
+            print("2. A small public exponent (e=3) is used")
+            print("3. Different public keys are used for each encryption")
+            
+            # Choose attack variant
+            print("\nChoose attack demonstration type:")
+            print("1. Basic Hastad Attack (non-padded)")
+            print("2. Padded vs Non-padded Messages (OAEP)")
+            
+            choice = input("\nSelect option (1-2): ").strip()
+            
+            if choice == "1":
+                self._basic_hastad_attack()
+            elif choice == "2":
+                self._hastad_attack_padding_comparison()
+            else:
+                print("❌ Invalid choice")
+                
+        except Exception as e:
+            logger.error(f"Hastad attack demonstration failed: {e}")
+            print(f"❌ Attack failed: {e}")
+    
+        input("\nPress Enter to continue...")
+
+    def _get_hastad_inputs(self):
+        """Get common inputs for all Hastad attack demonstrations"""
+        print("\nEnter a message to encrypt (will be converted to integer):")
+        message = input("Message: ").strip()
+        if not message:
+            message = "attack at dawn"
+            print(f"Using default message: '{message}'")
+        
+        # Validate message size
+        message_bytes = message.encode('utf-8')
+        if len(message_bytes) > 128:
+            print("\n❌ Error: Message is too long!")
+            print("Maximum message length is 128 bytes (1024 bits)")
+            print(f"Your message is {len(message_bytes)} bytes ({len(message_bytes) * 8} bits)")
+            return None, None, None
+        
+        # Get number of recipients
+        while True:
+            try:
+                num_recipients = input("\nEnter number of recipients/keys (minimum 3): ").strip()
+                num_recipients = int(num_recipients) if num_recipients else 3
+                if num_recipients < 3:
+                    print("⚠️ Minimum 3 recipients required for the attack. Using 3.")
+                    num_recipients = 3
+                break
+            except ValueError:
+                print("❌ Invalid input. Please enter a number.")
+        
+        message_int = int.from_bytes(message_bytes, 'big')
+        return message, message_int, num_recipients
+
+    def _basic_hastad_attack(self):
+        """Basic Hastad attack implementation"""
+        message, message_int, num_recipients = self._get_hastad_inputs()
+        if not message:
+            return
+            
+        print(f"\n🎯 Running Hastad attack with:")
+        print(f"   Message: '{message}'")
+        print(f"   Recipients: {num_recipients}")
+        
+        result = self.attacker.demonstrate_hastad_attack(
+            message_int=message_int,
+            e=3,
+            num_keys=num_recipients
+        )
+        self._display_hastad_result(result, message)
+
+    def _hastad_attack_different_exponents(self):
+        """Compare Hastad attack with different exponents"""
+        message, message_int, num_recipients = self._get_hastad_inputs()
+        if not message:
+            return
+            
+        exponents = [3, 5,7]  # Test different small exponents
+        results = []
+        
+        print(f"\n🎯 Testing with message: '{message}'")
+        print(f"   Base number of recipients: {num_recipients}")
+        print("\nRunning attacks with different exponents:")
+        
+        for e in exponents:
+            # Ensure we have enough recipients for each exponent
+            required_recipients = max(num_recipients, e)
+            print(f"\n🔍 Testing with e = {e} (using {required_recipients} recipients)")
+            
+            result = self.attacker.demonstrate_hastad_attack(
+                message_int=message_int,
+                e=e,
+                num_keys=required_recipients
+            )
+            results.append((e, result))
+        
+        # Display comparison results
+        print("\n📊 EXPONENT COMPARISON RESULTS")
+        print("=" * 60)
+        print(f"{'Exponent (e)':<12} {'Success':<10} {'Time (s)':<12} {'Recipients':<12} {'Notes'}")
+        print("-" * 60)
+        
+        for e, result in results:
+            success = "✅" if result['successful'] else "❌"
+            time = f"{result.get('attack_time', 'N/A'):.4f}" if 'attack_time' in result else "N/A"
+            recipients = max(num_recipients, e)
+            notes = "Recovered" if result['successful'] else "Failed"
+            print(f"{e:<12} {success:<10} {time:<12} {recipients:<12} {notes}")
+        
+        print("\n📝 Analysis:")
+        print("• Smaller exponents generally make the attack easier")
+        print("• Each exponent requires at least e different ciphertexts")
+        print("• Larger exponents increase computational complexity")
+
+    def _hastad_attack_padding_comparison(self):
+        """Compare Hastad attack on padded (OAEP) vs non-padded messages"""
+        from rsa_key_manager import RSAKeyManager
+        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives import hashes
+        import time
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        message, message_int, num_recipients = self._get_hastad_inputs()
+        if not message:
+            return
+            
+        print(f"\n🎯 Testing with message: '{message}'")
+        print(f"   Recipients: {num_recipients}")
+        print(f"   Message as integer: {message_int}")
+        
+        # Configuration
+        key_size = 2048
+        public_exponent = 3
+        
+        try:
+            # Generate keys for all recipients (same keys used for both tests)
+            print(f"\n🔑 Generating {num_recipients} RSA key pairs...")
+            key_pairs = []
+            moduli = []
+            
+            for i in range(num_recipients):
+                private_key, public_key = RSAKeyManager.generate_key_pair(
+                    key_size, public_exponent=public_exponent
+                )
+                key_pairs.append((private_key, public_key))
+                moduli.append(public_key.public_numbers().n)
+                print(f"   ✓ Key pair {i+1} generated (n = {moduli[-1] % 10000}...)")
+            
+            print("\n" + "="*80)
+            print("🔍 TESTING NON-PADDED RSA ENCRYPTION")
+            print("="*80)
+            
+            # Test 1: Non-padded (raw) RSA encryption
+            raw_ciphertexts = []
+            raw_start_time = time.time()
+            
+            for i, (_, public_key) in enumerate(key_pairs):
+                # Raw RSA encryption: c = m^e mod n
+                n = public_key.public_numbers().n
+                e = public_key.public_numbers().e
+                
+                # Ensure message is smaller than modulus
+                if message_int >= n:
+                    print(f"❌ Message too large for key {i+1} (message: {message_int}, n: {n})")
+                    return
+                
+                ciphertext = pow(message_int, e, n)
+                raw_ciphertexts.append(ciphertext)
+                print(f"   Recipient {i+1}: c = {ciphertext % 10000}... (mod {n % 10000}...)")
+            
+            raw_encrypt_time = time.time() - raw_start_time
+            
+            # Attempt Hastad attack on raw ciphertexts
+            print(f"\n🚀 Launching Hastad attack on non-padded ciphertexts...")
+            raw_attack_result = self.attacker.hastad_broadcast_attack(
+                ciphertexts=raw_ciphertexts,
+                moduli=moduli,
+                e=public_exponent
+            )
+            
+            raw_result = {
+                'successful': raw_attack_result[0] is not None,
+                'recovered_message': raw_attack_result[0],
+                'attack_time': raw_attack_result[1],
+                'encrypt_time': raw_encrypt_time,
+                'error': None if raw_attack_result[0] is not None else "Attack failed"
+            }
+            
+            if raw_result['successful']:
+                recovered_text = None
+                try:
+                    # Try to convert back to text
+                    recovered_bytes = raw_result['recovered_message'].to_bytes(
+                        (raw_result['recovered_message'].bit_length() + 7) // 8, 'big'
+                    )
+                    recovered_text = recovered_bytes.decode('utf-8', errors='ignore')
+                except:
+                    pass
+                
+                print(f"   ✅ Attack successful!")
+                print(f"   📝 Recovered integer: {raw_result['recovered_message']}")
+                if recovered_text:
+                    print(f"   📝 Recovered text: '{recovered_text}'")
+                print(f"   ⏱️  Attack time: {raw_result['attack_time']:.4f}s")
+            else:
+                print(f"   ❌ Attack failed: {raw_result['error']}")
+            
+            print("\n" + "="*80)
+            print("🔍 TESTING OAEP-PADDED RSA ENCRYPTION")
+            print("="*80)
+            
+            # Test 2: OAEP-padded RSA encryption
+            padded_ciphertexts = []
+            padded_start_time = time.time()
+            
+            message_bytes = message.encode('utf-8')
+            
+            for i, (_, public_key) in enumerate(key_pairs):
+                try:
+                    # OAEP padded encryption
+                    ciphertext_bytes = public_key.encrypt(
+                        message_bytes,
+                        padding.OAEP(
+                            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                            algorithm=hashes.SHA256(),
+                            label=None
+                        )
+                    )
+                    ciphertext_int = int.from_bytes(ciphertext_bytes, 'big')
+                    padded_ciphertexts.append(ciphertext_int)
+                    print(f"   Recipient {i+1}: c = {ciphertext_int % 10000}... (OAEP padded)")
+                    
+                except Exception as e:
+                    logger.error(f"OAEP encryption failed for recipient {i+1}: {e}")
+                    print(f"   ❌ OAEP encryption failed for recipient {i+1}: {e}")
+                    return
+            
+            padded_encrypt_time = time.time() - padded_start_time
+            
+            # Show that OAEP produces different ciphertexts for same message
+            print(f"\n📊 OAEP Randomness Analysis:")
+            print(f"   Same message encrypted {num_recipients} times produces different ciphertexts:")
+            for i, ct in enumerate(padded_ciphertexts):
+                print(f"   Recipient {i+1}: ...{str(ct)[-8:]} (last 8 digits)")
+            
+            # Attempt Hastad attack on OAEP ciphertexts
+            print(f"\n🚀 Launching Hastad attack on OAEP-padded ciphertexts...")
+            padded_attack_result = self.attacker.hastad_broadcast_attack(
+                ciphertexts=padded_ciphertexts,
+                moduli=moduli,
+                e=public_exponent
+            )
+            
+            padded_result = {
+                'successful': False,  # Should always fail with proper OAEP
+                'recovered_message': padded_attack_result[0],
+                'attack_time': padded_attack_result[1],
+                'encrypt_time': padded_encrypt_time,
+                'error': 'OAEP padding prevents attack through randomization'
+            }
+            
+            if padded_attack_result[0] is not None:
+                print(f"   ⚠️  Unexpected: Attack returned a result!")
+                print(f"   📝 Result: {padded_attack_result[0]}")
+                print(f"   🔍 This likely means the attack found a mathematical solution")
+                print(f"      but it's not the original message due to OAEP padding.")
+                padded_result['error'] = 'Attack found mathematical solution, but not original message'
+            else:
+                print(f"   ✅ Attack correctly failed (as expected with OAEP)")
+                print(f"   📝 OAEP padding successfully prevented the attack")
+            
+            print(f"   ⏱️  Attack attempt time: {padded_result['attack_time']:.4f}s")
+            
+        except Exception as e:
+            logger.error(f"Error during padding comparison: {e}")
+            print(f"❌ Error during test: {e}")
+            return
+        
+        # Display comprehensive comparison
+        print("\n" + "="*100)
+        print("📊 COMPREHENSIVE PADDING COMPARISON RESULTS")
+        print("="*100)
+        
+        print(f"{'Encryption Type':<20} {'Success':<10} {'Encrypt Time':<15} {'Attack Time':<15} {'Status'}")
+        print("-" * 100)
+        
+        # Non-padded results
+        success_icon = "✅" if raw_result['successful'] else "❌"
+        status = "VULNERABLE - Message recovered!" if raw_result['successful'] else "Attack failed"
+        print(f"{'Raw RSA':<20} {success_icon:<10} {raw_result['encrypt_time']:.4f}s{'':<7} "
+            f"{raw_result['attack_time']:.4f}s{'':<7} {status}")
+        
+        # OAEP results  
+        success_icon = "❌" if not padded_result['successful'] else "⚠️"
+        status = "SECURE - Attack prevented" if not padded_result['successful'] else "Unexpected result"
+        print(f"{'OAEP Padded RSA':<20} {success_icon:<10} {padded_result['encrypt_time']:.4f}s{'':<7} "
+            f"{padded_result['attack_time']:.4f}s{'':<7} {status}")
+        
+        print("\n📚 SECURITY ANALYSIS:")
+        print("┌─ Raw RSA Encryption:")
+        print("│  • Same message → Same ciphertext for each recipient")
+        print("│  • Vulnerable to Hastad's broadcast attack when e is small")
+        print("│  • Attack succeeds when you have ≥ e ciphertexts of same message")
+        print("│")
+        print("┌─ OAEP Padded RSA:")
+        print("│  • Same message → Different ciphertext for each recipient")
+        print("│  • Random padding prevents broadcast attacks")
+        print("│  • Each encryption includes random data, breaking the attack's assumption")
+        print("│  • Modern standard - always use OAEP or similar padding")
+        
+        print(f"\n🎯 RECOMMENDATION:")
+        if raw_result['successful']:
+            print("   ⚠️  Your implementation correctly demonstrates the vulnerability!")
+            print("   ✅ Always use OAEP padding in production RSA implementations")
+            print("   ✅ Never use raw RSA encryption for actual data")
+        else:
+            print("   🔍 Raw RSA attack failed - this might indicate:")
+            print("      • Message too large relative to key size")
+            print("      • Insufficient number of recipients")
+            print("      • Implementation issue in attack code")
+        
+        print(f"\n📈 PERFORMANCE METRICS:")
+        print(f"   • Raw RSA encryption: {raw_result['encrypt_time']:.4f}s for {num_recipients} recipients")
+        print(f"   • OAEP encryption: {padded_result['encrypt_time']:.4f}s for {num_recipients} recipients")
+        print(f"   • OAEP overhead: {((padded_result['encrypt_time'] - raw_result['encrypt_time']) / raw_result['encrypt_time'] * 100):.1f}% slower")
+        
+        return {
+            'raw_result': raw_result,
+            'padded_result': padded_result,
+            'num_recipients': num_recipients,
+            'message': message
+        }
+    def _display_hastad_result(self, result, original_message):
+        """Display the results of a Hastad attack"""
+        if result['successful']:
+            print("\n✅ Attack successful!")
+            print(f"Original message: '{original_message}'")
+            try:
+                recovered_bytes = result['recovered_message'].to_bytes(
+                    (result['recovered_message'].bit_length() + 7) // 8, 
+                    'big'
+                )
+                recovered_text = recovered_bytes.decode('utf-8')
+                print(f"Recovered message: '{recovered_text}'")
+            except Exception as e:
+                print(f"Recovered value: {result['recovered_message']}")
+                
+            print(f"Time taken: {result['attack_time']:.4f} seconds")
+            
+            if 'validation_details' in result:
+                print("\n🔍 Validation Details:")
+                for key, value in result['validation_details'].items():
+                    if 'coprime_check' in key:
+                        print(f"Moduli coprime check: {'✅' if value else '❌'}")
+                    elif 'ciphertext_verification' in key:
+                        print(f"Ciphertext verification: {'✅' if value else '❌'}")
+        else:
+            print("\n❌ Attack failed!")
+            if 'error' in result:
+                print(f"Error: {result['error']}")
+            if 'attack_time' in result:
+                print(f"Time taken: {result['attack_time']:.4f} seconds")
     
     def display_single_attack_result(self, result):
         """Display results of a single attack"""
