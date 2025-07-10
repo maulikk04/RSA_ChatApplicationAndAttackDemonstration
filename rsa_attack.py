@@ -16,6 +16,23 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 import matplotlib.pyplot as plt
 import numpy as np
+import math
+import random
+from fractions import Fraction
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers, RSAPrivateNumbers
+
+if not hasattr(math, 'isqrt'):
+    def isqrt(n):
+        """Integer square root"""
+        if n <= 0:
+            return 0
+        x = int(n)
+        y = (x + 1) // 2
+        while y < x:
+            x = y
+            y = (x + n // x) // 2
+        return x
+    math.isqrt = isqrt
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +43,8 @@ class RSAAttacker:
         """Initialize RSA Attacker"""
         self.attack_results = []
         self.timing_results = {}
-        self.hastad_results = []  # Add this line
+        self.hastad_results = []  
+        self.wiener_results = []
         
     def trial_division_factorization(self, n, max_attempts=1000000):
         """
@@ -115,7 +133,7 @@ class RSAAttacker:
             # If the number is close to being a perfect square, Fermat's method works well
             # Otherwise, it's very slow. Set a practical limit.
             if n.bit_length() > 512:  # For keys larger than 512 bits
-                max_iterations = min(max_iterations, 10000)  # Reduce iterations
+                max_iterations = min(max_iterations, 10000) 
             
             # Start with the ceiling of sqrt(n)
             a = sqrt_n
@@ -567,6 +585,345 @@ class RSAAttacker:
             logger.error(f"Hastad attack failed: {e}")
             return None, time.time() - start_time
     
+    def wiener_attack(self, n, e, max_iterations=1000):
+        """
+        Implements Wiener's attack on RSA with small private exponent
+        
+        Args:
+            n (int): RSA modulus
+            e (int): Public exponent
+            max_iterations (int): Maximum number of continued fraction terms to compute
+            
+        Returns:
+            tuple: (d, factors, time_taken) or (None, None, time_taken) if attack fails
+                d - the recovered private exponent
+                factors - tuple of (p, q) factors of n
+        """
+        start_time = time.time()
+        
+        try:
+            # Convert e/n to a continued fraction
+            frac = Fraction(e, n)
+            convergents = self._compute_convergents(frac, max_iterations)
+            
+            # For each convergent k/d, check if it's a valid solution
+            for k, d in convergents:
+                if k == 0:
+                    continue
+                    
+                # Check if d is a potential private key: e*d ≡ 1 mod phi(n)
+                # Since phi(n) is unknown, we'll check whether (e*d - 1) is divisible by k
+                if (e * d - 1) % k != 0:
+                    continue
+                    
+                # Compute potential phi(n) = (e*d - 1) / k
+                phi = (e * d - 1) // k
+                    
+                # With phi(n) = (p-1)(q-1) = n - (p+q) + 1, we can find p+q = n - phi + 1
+                sum_pq = n - phi + 1
+                    
+                # Using p+q and p*q=n, solve for p and q via the quadratic formula
+                # p and q are roots of x^2 - (p+q)x + n = 0
+                discriminant = sum_pq**2 - 4 * n
+                
+                # Check if the discriminant is a perfect square
+                discriminant_sqrt = math.isqrt(discriminant)
+                if discriminant_sqrt**2 != discriminant:
+                    continue
+                
+                # Compute p and q using the quadratic formula
+                p = (sum_pq + discriminant_sqrt) // 2
+                q = (sum_pq - discriminant_sqrt) // 2
+                
+                # Verify that p and q are the correct factors
+                if p * q == n:
+                    end_time = time.time()
+                    return d, (p, q), end_time - start_time
+            
+            # If we've tried all convergents and none worked
+            return None, None, time.time() - start_time
+            
+        except Exception as e:
+            logger.error(f"Wiener attack failed: {e}")
+            return None, None, time.time() - start_time
+    
+    def _compute_convergents(self, frac, max_iterations=1000):
+        """
+        Compute the convergents of a continued fraction
+        
+        Args:
+            frac (Fraction): The fraction to compute convergents for
+            max_iterations (int): Maximum number of terms to compute
+            
+        Returns:
+            list: List of tuples (k, d) representing the convergents
+        """
+        # Extract the continued fraction representation
+        a_list = self._continued_fraction_expansion(frac, max_iterations)
+        
+        # Initialize variables for recurrence relation
+        h = [0, 1]  # h_{-2}, h_{-1}
+        k = [1, 0]  # k_{-2}, k_{-1}
+        
+        # List to store convergents (numerator, denominator)
+        convergents = []
+        
+        # Compute the convergents using the recurrence relation
+        for i, a_i in enumerate(a_list):
+            # h_n = a_n * h_{n-1} + h_{n-2}
+            h.append(a_i * h[-1] + h[-2])
+            # k_n = a_n * k_{n-1} + k_{n-2}
+            k.append(a_i * k[-1] + k[-2])
+            
+            # Add the current convergent
+            if i > 0:  # Skip the first iteration
+                convergents.append((h[-1], k[-1]))
+        
+        return convergents
+    
+    def _continued_fraction_expansion(self, frac, max_iterations=1000):
+        """
+        Compute the continued fraction expansion of a fraction
+        
+        Args:
+            frac (Fraction): The fraction to expand
+            max_iterations (int): Maximum number of terms to compute
+            
+        Returns:
+            list: List of terms in the continued fraction expansion
+        """
+        a_list = []
+        numerator = frac.numerator
+        denominator = frac.denominator
+        
+        iteration = 0
+        while denominator and iteration < max_iterations:
+            # Compute the integer part
+            a_i = numerator // denominator
+            a_list.append(a_i)
+            
+            # Update for the next iteration
+            numerator, denominator = denominator, numerator - a_i * denominator
+            iteration += 1
+        
+        return a_list
+    
+    def demonstrate_wiener_attack(self, key_size=1024, d_size_ratio=0.25, message=None):
+        """
+        Demonstrate Wiener's attack with vulnerable key generation
+        
+        Args:
+            key_size (int): Size of the RSA key in bits
+            d_size_ratio (float): Ratio of d's bit size to key size (d < n^{0.25} for vulnerability)
+            message (int): Optional message to encrypt and recover as part of the demonstration
+            
+        Returns:
+            dict: Attack results
+        """
+        try:
+            print(f"\n🎯 Starting Wiener's Attack Demonstration")
+            print(f"   Key size: {key_size} bits")
+            print(f"   Private exponent size ratio: {d_size_ratio}")
+            
+            results = {
+                'timestamp': datetime.now().isoformat(),
+                'key_size_bits': key_size,
+                'd_size_ratio': d_size_ratio,
+                'successful': False,
+                'validation_details': {}
+            }
+            
+            # Generate vulnerable key pair with small private exponent
+            print("\n🔑 Generating vulnerable RSA key pair...")
+            private_key, public_key, d = self._generate_vulnerable_wiener_key(key_size, d_size_ratio)
+            
+            if not private_key or not public_key:
+                raise ValueError("Failed to generate vulnerable key pair")
+                
+            # Extract key parameters
+            n = public_key.public_numbers().n
+            e = public_key.public_numbers().e
+            
+            print(f"   ✅ Key generated successfully")
+            print(f"   💻 Key parameters:")
+            print(f"      Modulus (n): {n} ({n.bit_length()} bits)")
+            print(f"      Public exponent (e): {e}")
+            print(f"      Private exponent (d): {d} ({d.bit_length()} bits)")
+            print(f"      d/n ratio: {d/n:.10f}")
+            
+            results['n'] = n
+            results['e'] = e
+            results['d'] = d
+            results['d_bit_length'] = d.bit_length()
+            
+            # If a message was provided, encrypt it
+            ciphertext = None
+            original_message = None
+            if message is not None:
+                original_message = message
+                
+                # Check if message is smaller than n
+                if message >= n:
+                    max_message_bytes = (n.bit_length() // 8) - 1  # Maximum message size in bytes
+                    return {
+                        'successful': False,
+                        'key_size_bits': key_size,
+                        'error': f"Message is too large for the key size. For {key_size}-bit key, maximum message length is {max_message_bytes} bytes ({max_message_bytes * 8} bits)."
+                    }
+                
+                # Encrypt the message using the public key (c = m^e mod n)
+                print(f"\n📝 Encrypting user message...")
+                ciphertext = pow(message, e, n)
+                print(f"   Message (int): {message}")
+                print(f"   Encrypted ciphertext: {ciphertext}")
+                
+                results['original_message'] = message
+                results['ciphertext'] = ciphertext
+            
+            # Perform Wiener's attack
+            print("\n🚀 Launching Wiener's attack...")
+            recovered_d, factors, time_taken = self.wiener_attack(n, e)
+            
+            results['attack_time'] = time_taken
+            
+            if recovered_d is not None and factors is not None:
+                p, q = factors
+                results['successful'] = True
+                results['recovered_d'] = recovered_d
+                results['factors'] = [p, q]
+                
+                print(f"\n✅ Attack successful!")
+                print(f"   🔑 Recovered private exponent (d): {recovered_d}")
+                print(f"   🔑 Recovered factors: p = {p}, q = {q}")
+                print(f"   ✅ Verification: {p} × {q} = {p * q}")
+                print(f"   ⏱️  Time taken: {time_taken:.4f} seconds")
+                
+                # If we had a message, try to recover it
+                if ciphertext is not None:
+                    print("\n🔓 Attempting to decrypt the message using recovered key...")
+                    # Decrypt using recovered private key (m = c^d mod n)
+                    recovered_message = pow(ciphertext, recovered_d, n)
+                    results['recovered_message'] = recovered_message
+                    
+                    print(f"   Original message (int): {message}")
+                    print(f"   Recovered message (int): {recovered_message}")
+                    
+                    # Verify message recovery
+                    if recovered_message == message:
+                        print(f"   ✅ Message recovery successful!")
+                    else:
+                        print(f"   ❌ Message recovery failed")
+                
+                # Verify if the recovered d is equivalent to the original d mod phi(n)
+                phi_n = (p - 1) * (q - 1)
+                if (e * recovered_d) % phi_n == 1:
+                    equiv_verification = True
+                    print(f"   ✅ Verification: e × d ≡ 1 (mod φ(n))")
+                else:
+                    equiv_verification = False
+                    print(f"   ❌ Verification failed: e × d ≢ 1 (mod φ(n))")
+                
+                results['validation_details']['factors_verification'] = p * q == n
+                results['validation_details']['private_key_verification'] = equiv_verification
+                results['validation_details']['original_d'] = d
+                results['validation_details']['recovered_d'] = recovered_d
+                
+            else:
+                print(f"\n❌ Attack failed")
+                print(f"   Possible reasons:")
+                print(f"      • Private exponent d might be too large for Wiener's attack")
+                print(f"      • Implementation issue or edge case encountered")
+                print(f"   ⏱️  Time taken: {time_taken:.4f} seconds")
+            
+            self.wiener_results.append(results)
+            return results
+            
+        except Exception as e:
+            logger.error(f"Wiener demonstration failed: {e}")
+            return {
+                'successful': False,
+                'error': str(e)
+            }
+    
+    def _generate_vulnerable_wiener_key(self, key_size=1024, d_size_ratio=0.25):
+        """
+        Generate an RSA key pair vulnerable to Wiener's attack (with small d)
+        
+        Args:
+            key_size (int): Size of the RSA key in bits
+            d_size_ratio (float): Ratio determining the max size of d relative to n
+            
+        Returns:
+            tuple: (private_key, public_key, d) or (None, None, None) if failed
+        """
+        try:
+            from rsa_key_manager import RSAKeyManager
+            max_attempts = 50
+            
+            for attempt in range(max_attempts):
+                # Generate primes p and q
+                p_bits = key_size // 2
+                q_bits = key_size - p_bits
+                p = RSAKeyManager._generate_prime(p_bits)
+                q = RSAKeyManager._generate_prime(q_bits)
+                
+                if p == q or not p or not q:
+                    continue
+                
+                # Calculate n and φ(n)
+                n = p * q
+                phi_n = (p - 1) * (q - 1)
+                
+                # Calculate maximum d based on the vulnerability condition for Wiener's attack
+                # Wiener's attack works when d < n^0.25 / 3
+                # First calculate n^0.25 using the bit length: n^0.25 = 2^(log_2(n)*0.25) = 2^(bit_length*0.25)
+                max_d = int(pow(2, n.bit_length() * 0.25))
+                max_d = max_d // 3  # Ensuring d < n^0.25 / 3
+                
+                # Choose a random d that is less than max_d and coprime to φ(n)
+                for _ in range(100):  # Try up to 100 times to find suitable d
+                    d = random.randrange(3, max_d, 2)  # Odd numbers only
+                    if math.gcd(d, phi_n) == 1:
+                        break
+                else:
+                    # Couldn't find suitable d
+                    continue
+                
+                # Calculate e = d^(-1) mod φ(n)
+                try:
+                    e = pow(d, -1, phi_n)
+                except ValueError:
+                    continue  # No modular inverse exists
+                
+                # Create RSA key objects
+                try:
+                    # Compute CRT parameters
+                    dmp1 = d % (p - 1)
+                    dmq1 = d % (q - 1)
+                    iqmp = pow(q, -1, p)  # q^(-1) mod p
+                    
+                    public_numbers = RSAPublicNumbers(e, n)
+                    private_numbers = RSAPrivateNumbers(
+                        p=p, q=q, d=d, dmp1=dmp1, dmq1=dmq1, iqmp=iqmp,
+                        public_numbers=public_numbers
+                    )
+                    
+                    private_key = private_numbers.private_key()
+                    public_key = private_key.public_key()
+                    
+                    return private_key, public_key, d
+                    
+                except Exception as key_error:
+                    logger.error(f"Failed to create key objects: {key_error}")
+                    continue
+            
+            logger.error("Failed to generate vulnerable key after maximum attempts")
+            return None, None, None
+            
+        except Exception as e:
+            logger.error(f"Error in vulnerable key generation: {e}")
+            return None, None, None
+
     def demonstrate_hastad_attack(self, message_int, e=3, num_keys=3):
         """
         Demonstrate Hastad's broadcast attack with improved validation and verification
@@ -664,12 +1021,12 @@ class RSAAttacker:
                 print(f"   Time taken: {time_taken:.4f} seconds")
                 
                 # Detailed verification
-                print("\n🔍 Verification against all ciphertexts:")
-                for i, (c, n) in enumerate(zip(ciphertexts, moduli), 1):
-                    computed = pow(recovered_message, e, n)
-                    matches = computed == c
-                    results['validation_details'][f'ciphertext_{i}_verification'] = matches
-                    print(f"   Ciphertext {i}: {'✅ Verified' if matches else '❌ Mismatch'}")
+                # print("\n🔍 Verification against all ciphertexts:")
+                # for i, (c, n) in enumerate(zip(ciphertexts, moduli), 1):
+                #     computed = pow(recovered_message, e, n)
+                #     matches = computed == c
+                #     results['validation_details'][f'ciphertext_{i}_verification'] = matches
+                #     print(f"   Ciphertext {i}: {'✅ Verified' if matches else '❌ Mismatch'}")
             else:
                 print(f"\n❌ Attack failed")
                 print(f"   Time taken: {time_taken:.4f} seconds")

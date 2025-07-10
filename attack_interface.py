@@ -27,10 +27,11 @@ class AttackInterface:
         print_header("RSA ATTACK DEMONSTRATION")
         
         menu_options = [
-            "1. Single Key Attack",
-            "2. Benchmark Different Key Sizes",
-            "3. Hastad's Broadcast Attack",  # Add this line
-            "4. View Previous Results",
+            "1. Small Key Attack",
+            "2. Benchmark Different Key Sizes against Small key attacks",
+            "3. Hastad's Broadcast Attack", 
+            "4. Wiener's Attack", 
+            "5. View Previous Results",
             "0. Back to Main Menu"
         ]
         
@@ -49,11 +50,14 @@ class AttackInterface:
                     self.single_key_attack()
                 elif choice == '2':
                     self.benchmark_key_sizes()
-                elif choice == '3':  # Add this block
+                elif choice == '3':
                     self.hastad_attack_demo()
                 elif choice == '4':
+                    self.wiener_attack_demo()
+                elif choice == '5':
                     self.view_previous_results()
                 elif choice == '0':
+                    clear_screen()
                     break
                 else:
                     print("❌ Invalid option. Please try again.")
@@ -79,18 +83,16 @@ class AttackInterface:
             
             try:
                 key_size = int(key_size_input)
-                # if key_size < 64 or key_size > 2048:
-                #     print("⚠️  Warning: Recommended range is 64-1024 bits for demonstration purposes")
             except ValueError:
                 print("❌ Invalid key size. Using default 256 bits.")
                 key_size = 256
             
             # Ask for attack methods
             print(f"\nAvailable attack methods:")
-            print("1. Trial Division (good for very small keys)")
-            print("2. Pollard's Rho (general purpose)")
-            print("3. Fermat's Method (good for close factors)")
-            print("4. All methods (recommended)")
+            print("1. Trial Division")
+            print("2. Pollard's Rho")
+            print("3. Fermat's Method")
+            print("4. All methods")
             
             method_choice = input("Select methods (1-4): ").strip()
             
@@ -165,17 +167,6 @@ class AttackInterface:
             self.attacker.generate_attack_report(results)
             self.attacker.create_comparison_table(results)
             
-            # Ask to generate plots
-            plot_choice = input("\n📊 Generate visualization plots? (y/n): ").strip().lower()
-            if plot_choice == 'y':
-                try:
-                    self.attacker.plot_attack_results(results)
-                except ImportError:
-                    print("❌ Matplotlib not available. Install with: pip install matplotlib")
-                except Exception as e:
-                    print(f"❌ Failed to generate plots: {e}")
-            
-            # Save results
             save_choice = input("\n💾 Save benchmark results? (y/n): ").strip().lower()
             if save_choice == 'y':
                 filename = f"benchmark_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -321,7 +312,7 @@ class AttackInterface:
         if not message:
             return
             
-        exponents = [3, 5,7]  # Test different small exponents
+        exponents = [3, 5,7] 
         results = []
         
         print(f"\n🎯 Testing with message: '{message}'")
@@ -329,7 +320,6 @@ class AttackInterface:
         print("\nRunning attacks with different exponents:")
         
         for e in exponents:
-            # Ensure we have enough recipients for each exponent
             required_recipients = max(num_recipients, e)
             print(f"\n🔍 Testing with e = {e} (using {required_recipients} recipients)")
             
@@ -485,13 +475,6 @@ class AttackInterface:
             
             padded_encrypt_time = time.time() - padded_start_time
             
-            # Show that OAEP produces different ciphertexts for same message
-            print(f"\n📊 OAEP Randomness Analysis:")
-            print(f"   Same message encrypted {num_recipients} times produces different ciphertexts:")
-            for i, ct in enumerate(padded_ciphertexts):
-                print(f"   Recipient {i+1}: ...{str(ct)[-8:]} (last 8 digits)")
-            
-            # Attempt Hastad attack on OAEP ciphertexts
             print(f"\n🚀 Launching Hastad attack on OAEP-padded ciphertexts...")
             padded_attack_result = self.attacker.hastad_broadcast_attack(
                 ciphertexts=padded_ciphertexts,
@@ -500,7 +483,7 @@ class AttackInterface:
             )
             
             padded_result = {
-                'successful': False,  # Should always fail with proper OAEP
+                'successful': False, 
                 'recovered_message': padded_attack_result[0],
                 'attack_time': padded_attack_result[1],
                 'encrypt_time': padded_encrypt_time,
@@ -544,40 +527,316 @@ class AttackInterface:
         print(f"{'OAEP Padded RSA':<20} {success_icon:<10} {padded_result['encrypt_time']:.4f}s{'':<7} "
             f"{padded_result['attack_time']:.4f}s{'':<7} {status}")
         
-        print("\n📚 SECURITY ANALYSIS:")
-        print("┌─ Raw RSA Encryption:")
-        print("│  • Same message → Same ciphertext for each recipient")
-        print("│  • Vulnerable to Hastad's broadcast attack when e is small")
-        print("│  • Attack succeeds when you have ≥ e ciphertexts of same message")
-        print("│")
-        print("┌─ OAEP Padded RSA:")
-        print("│  • Same message → Different ciphertext for each recipient")
-        print("│  • Random padding prevents broadcast attacks")
-        print("│  • Each encryption includes random data, breaking the attack's assumption")
-        print("│  • Modern standard - always use OAEP or similar padding")
-        
-        print(f"\n🎯 RECOMMENDATION:")
-        if raw_result['successful']:
-            print("   ⚠️  Your implementation correctly demonstrates the vulnerability!")
-            print("   ✅ Always use OAEP padding in production RSA implementations")
-            print("   ✅ Never use raw RSA encryption for actual data")
-        else:
-            print("   🔍 Raw RSA attack failed - this might indicate:")
-            print("      • Message too large relative to key size")
-            print("      • Insufficient number of recipients")
-            print("      • Implementation issue in attack code")
-        
-        print(f"\n📈 PERFORMANCE METRICS:")
-        print(f"   • Raw RSA encryption: {raw_result['encrypt_time']:.4f}s for {num_recipients} recipients")
-        print(f"   • OAEP encryption: {padded_result['encrypt_time']:.4f}s for {num_recipients} recipients")
-        print(f"   • OAEP overhead: {((padded_result['encrypt_time'] - raw_result['encrypt_time']) / raw_result['encrypt_time'] * 100):.1f}% slower")
-        
         return {
             'raw_result': raw_result,
             'padded_result': padded_result,
             'num_recipients': num_recipients,
             'message': message
         }
+    def wiener_attack_demo(self):
+        """Demonstrate Wiener's attack on RSA with small private exponent"""
+        clear_screen()
+        print_header("WIENER'S ATTACK DEMONSTRATION")
+        
+        try:
+            print("\nWiener's attack exploits RSA keys with small private exponents (d).")
+            print("This attack works when d < n^(1/4) / 3, which violates the usual RSA security assumptions.")
+            print("\nNote: In practice, RSA implementations use large values for d, making them")
+            print("      resistant to this attack. This is for educational purposes only.")
+            
+            # Choose demo mode
+            print("\nChoose demonstration mode:")
+            print("1. Single Key Attack")
+            print("2. Compare Different Key Sizes")
+            
+            mode_choice = input("\nSelect mode (1-2): ").strip()
+            
+            if mode_choice == "2":
+                self._wiener_compare_key_sizes()
+            else:
+                self._wiener_single_attack()
+        
+        except Exception as e:
+            logger.error(f"Wiener attack demonstration failed: {e}")
+            print(f"\n❌ Demonstration failed: {e}")
+        
+        input("\nPress Enter to continue...")
+    
+    def _wiener_single_attack(self):
+        """Run a single Wiener attack with user-specified parameters"""
+        try:
+            # Configure attack parameters
+            print("\nConfigure attack demonstration:")
+            
+            key_size = 1024  # Default key size
+            d_size_ratio = 0.25  # Default d size ratio (d < n^0.25 for vulnerability)
+            
+            # User enters key size
+            try:
+                size_input = input("\nEnter key size in bits: ").strip()
+                if size_input:
+                    key_size = int(size_input)
+            except ValueError:
+                print("\n❌ Invalid input, using default 1024 bits")
+            
+            # User enters d size ratio
+            try:
+                ratio_input = input("\nEnter d size ratio (0.20-0.25, smaller = more vulnerable): ").strip()
+                if ratio_input:
+                    d_size_ratio = float(ratio_input)
+                    if d_size_ratio < 0.20:
+                        print("\n⚠️ Ratio too small, setting to 0.20")
+                        d_size_ratio = 0.20
+                    elif d_size_ratio > 0.25:
+                        print("\n⚠️ Ratio too large (attack may fail), setting to 0.25")
+                        d_size_ratio = 0.25
+            except ValueError:
+                print("\n❌ Invalid input, using default ratio of 0.25")
+                
+            # User enters message to encrypt and recover
+            print("\nEnter a message to encrypt with the vulnerable key:")
+            message = input("Message: ").strip()
+            if not message:
+                message = "attack at dawn"
+                print(f"Using default message: '{message}'")
+                
+            # Convert message to integer
+            message_bytes = message.encode('utf-8')
+            
+            message_int = int.from_bytes(message_bytes, 'big')
+            
+            # Run the Wiener attack demonstration
+            print(f"\n🚀 Starting Wiener's attack with {key_size}-bit key and d-size ratio {d_size_ratio}")
+            print(f"\n📝 Message to encrypt: '{message}'")
+            print("\n⚙️  This might take a moment...")
+            
+            # Add the message to the parameters
+            result = self.attacker.demonstrate_wiener_attack(
+                key_size=key_size, 
+                d_size_ratio=d_size_ratio,
+                message=message_int
+            )
+            
+            self._display_wiener_attack_result(result, message)
+            
+            # Save option
+            save_choice = input("\n💾 Save attack result? (y/n): ").strip().lower()
+            if save_choice == 'y':
+                filename = f"wiener_attack_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                try:
+                    with open(filename, 'w') as f:
+                        json.dump(result, f, indent=2, default=str)
+                    print(f"\n✅ Results saved to {filename}")
+                except Exception as e:
+                    print(f"\n❌ Failed to save results: {e}")
+                
+        except Exception as e:
+            logger.error(f"Single Wiener attack failed: {e}")
+            print(f"\n❌ Attack failed: {e}")
+    
+    def _wiener_compare_key_sizes(self):
+        """Compare Wiener attack results for different key sizes"""
+        try:
+            print("\n📊 WIENER'S ATTACK KEY SIZE COMPARISON")
+            
+            # Get key sizes to test
+            print("\nEnter key sizes to test (comma-separated, e.g., 512,768,1024,2048):")
+            key_sizes_input = input("Key sizes: ").strip()
+            if not key_sizes_input:
+                key_sizes = [256, 512, 768, 1024, 1536, 2048]
+                print(f"Using default key sizes: {key_sizes}")
+            else:
+                try:
+                    key_sizes = [int(k.strip()) for k in key_sizes_input.split(',')]
+                    # Validate and limit key sizes
+                    key_sizes = [max(256, min(k, 2048)) for k in key_sizes]
+                    key_sizes.sort()  # Sort in ascending order
+                except ValueError:
+                    print("\n❌ Invalid input, using default key sizes")
+                    key_sizes = [256, 512, 768, 1024, 1536, 2048]
+            
+            # Get d size ratio
+            try:
+                ratio_input = input("\nEnter d size ratio (0.20-0.25): ").strip()
+                if not ratio_input:
+                    d_size_ratio = 0.25
+                    print(f"Using default ratio: {d_size_ratio}")
+                else:
+                    d_size_ratio = float(ratio_input)
+                    if d_size_ratio < 0.20:
+                        print("\n⚠️ Ratio too small, setting to 0.20")
+                        d_size_ratio = 0.20
+                    elif d_size_ratio > 0.25:
+                        print("\n⚠️ Ratio too large (attack may fail), setting to 0.25")
+                        d_size_ratio = 0.25
+            except ValueError:
+                print("\n❌ Invalid input, using default ratio")
+                d_size_ratio = 0.25
+            
+            # Get message to encrypt
+            print("\nEnter a message to encrypt with all key sizes:")
+            message = input("Message: ").strip()
+            if not message:
+                message = "attack at dawn"
+                print(f"Using default message: '{message}'")
+            
+            # Convert message to integer
+            message_bytes = message.encode('utf-8')
+            message_int = int.from_bytes(message_bytes, 'big')
+            
+            # Run attack for each key size
+            results = []
+            print("\n🚀 Running Wiener's attack comparison...")
+            
+            for key_size in key_sizes:
+                print(f"\n📝 Testing {key_size}-bit key with ratio {d_size_ratio}...")
+                
+                result = self.attacker.demonstrate_wiener_attack(
+                    key_size=key_size,
+                    d_size_ratio=d_size_ratio,
+                    message=message_int
+                )
+                
+                result['key_size'] = key_size 
+                results.append(result)
+                
+                # Show brief result
+                if result['successful']:
+                    print(f"   ✅ Attack successful! Time: {result.get('attack_time', 'N/A'):.4f}s")
+                else:
+                    print(f"   ❌ Attack failed. {result.get('error', '')}")
+            
+            # Display comparison table
+            self._display_wiener_comparison_results(results, message, d_size_ratio)
+            
+            # Save option
+            save_choice = input("\n💾 Save comparison results? (y/n): ").strip().lower()
+            if save_choice == 'y':
+                filename = f"wiener_comparison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                try:
+                    with open(filename, 'w') as f:
+                        json.dump(results, f, indent=2, default=str)
+                    print(f"\n✅ Comparison results saved to {filename}")
+                except Exception as e:
+                    print(f"\n❌ Failed to save results: {e}")
+            
+        except Exception as e:
+            logger.error(f"Wiener key size comparison failed: {e}")
+            print(f"\n❌ Comparison failed: {e}")
+    
+    def _display_wiener_comparison_results(self, results, message, d_size_ratio):
+        """Display comprehensive comparison of Wiener attack results"""
+        print("\n" + "=" * 100)
+        print("📊 WIENER'S ATTACK KEY SIZE COMPARISON RESULTS")
+        print("=" * 100)
+        
+        print(f"Test parameters:")
+        print(f"   • Message: '{message}'")
+        print(f"   • Message size: {len(message.encode('utf-8'))} bytes")
+        print(f"   • d size ratio: {d_size_ratio}")
+        
+        print("\n" + "-" * 100)
+        print(f"{'Key Size':<12} {'Status':<12} {'Attack Time':<15} {'d recovered':<15} {'d bits':<10} {'Factors Found'}")
+        print("-" * 100)
+        
+        successful_count = 0
+        for result in results:
+            key_size = result.get('key_size_bits', result.get('key_size', 'N/A'))
+            status = "✅ SUCCESS" if result.get('successful', False) else "❌ FAILED"
+            attack_time = f"{result.get('attack_time', 'N/A'):.4f}s" if result.get('attack_time') else "N/A"
+            
+            if result.get('successful', False):
+                d_value = str(result.get('recovered_d', 'N/A'))
+                if len(d_value) > 12:  # Truncate if too long
+                    d_value = d_value[:9] + '...'
+                d_bits = result.get('d_bit_length', 'N/A')
+                factors = "Yes" if result.get('factors') else "No"
+                successful_count += 1
+            else:
+                d_value = "N/A"
+                d_bits = "N/A"
+                factors = "No"
+            
+            print(f"{key_size:<12} {status:<12} {attack_time:<15} {d_value:<15} {d_bits:<10} {factors}")
+        
+        print("-" * 100)
+        success_rate = (successful_count / len(results)) * 100 if results else 0
+        print(f"Success rate: {successful_count}/{len(results)} ({success_rate:.1f}%)")
+        
+        # Analysis section
+        print("\n📋 ANALYSIS")
+        print("-" * 100)
+        if successful_count > 0:
+            successful_keys = [r.get('key_size_bits', r.get('key_size')) for r in results if r.get('successful', False)]
+            print(f"• Successful attacks on key sizes: {', '.join(map(str, successful_keys))}")
+            
+            min_time = min([r.get('attack_time', float('inf')) for r in results if r.get('successful', False)])
+            min_time_key = next(r.get('key_size_bits', r.get('key_size')) for r in results 
+                              if r.get('successful', False) and r.get('attack_time') == min_time)
+            print(f"• Fastest attack: {min_time:.4f}s on {min_time_key}-bit key")
+            
+            avg_time = sum([r.get('attack_time', 0) for r in results if r.get('successful', False)]) / successful_count
+            print(f"• Average attack time for successful attacks: {avg_time:.4f}s")
+        else:
+            print("• No successful attacks across all key sizes")
+        
+        print("• Observations:")
+        print("  - Wiener's attack is theoretically feasible when d < n^(1/4)/3")
+        print("  - Success rate decreases as key size increases")
+        print("  - Attack time generally increases with key size")
+        print("  - Smaller d size ratios increase vulnerability")
+    
+    def _display_wiener_attack_result(self, result, message):
+        """Display results of a single Wiener attack"""
+        if result['successful']:
+            print("\n" + "=" * 80)
+            print("🏆 WIENER'S ATTACK SUCCESSFUL!")
+            print("=" * 80)
+            print(f"Key size: {result['key_size_bits']} bits")
+            print(f"Public exponent (e): {result['e']}")
+            print(f"Private exponent (d): {result.get('recovered_d', 'Unknown')}")
+            print(f"Original d: {result.get('d', 'Unknown')}")
+            print(f"Attack time: {result.get('attack_time', 'Unknown'):.4f} seconds")
+            
+            if result.get('factors'):
+                p, q = result['factors']
+                print(f"\n🔑 Recovered factors:")
+                print(f"p = {p}")
+                print(f"q = {q}")
+                print(f"Verification: p × q = {p * q}")
+            
+            # Display message recovery information
+            if 'original_message' in result and 'recovered_message' in result:
+                print("\n📨 MESSAGE RECOVERY RESULTS:")
+                print(f"Original message (int): {result['original_message']}")
+                print(f"Encrypted message: {result.get('ciphertext', 'Not available')}")
+                print(f"Recovered message (int): {result['recovered_message']}")
+                
+                # Convert recovered integer back to text
+                try:
+                    recovered_bytes = result['recovered_message'].to_bytes(
+                        (result['recovered_message'].bit_length() + 7) // 8, 'big')
+                    recovered_text = recovered_bytes.decode('utf-8')
+                    print(f"\n✅ Recovered text: '{recovered_text}'")
+                    
+                    if recovered_text == message:
+                        print("✓ Message perfectly recovered!")
+                    else:
+                        print("⚠️ Message recovery has some issues.")
+                except Exception as e:
+                    print(f"\n❌ Failed to convert recovered value to text: {e}")
+        else:
+            print("\n" + "=" * 80)
+            print("❌ WIENER'S ATTACK FAILED")
+            print("=" * 80)
+            print(f"Key size: {result.get('key_size_bits', 'Unknown')} bits")
+            if 'error' in result:
+                print(f"Error: {result['error']}")
+            print("\nPossible reasons for failure:")
+            print("• The private exponent (d) might be too large")
+            print("• The continued fraction expansion didn't yield good approximations")
+            print("• Key generation parameters didn't produce a vulnerable key")
+    
     def _display_hastad_result(self, result, original_message):
         """Display the results of a Hastad attack"""
         if result['successful']:
@@ -594,14 +853,7 @@ class AttackInterface:
                 print(f"Recovered value: {result['recovered_message']}")
                 
             print(f"Time taken: {result['attack_time']:.4f} seconds")
-            
-            if 'validation_details' in result:
-                print("\n🔍 Validation Details:")
-                for key, value in result['validation_details'].items():
-                    if 'coprime_check' in key:
-                        print(f"Moduli coprime check: {'✅' if value else '❌'}")
-                    elif 'ciphertext_verification' in key:
-                        print(f"Ciphertext verification: {'✅' if value else '❌'}")
+        
         else:
             print("\n❌ Attack failed!")
             if 'error' in result:
