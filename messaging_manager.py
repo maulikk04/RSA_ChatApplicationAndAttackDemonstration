@@ -67,7 +67,6 @@ class MessageManager:
                 self.messages = {}
         except Exception as e:
             logger.error(f"Failed to reload messages: {e}")
-            # Keep existing messages if reload fails
     
     def _save_messages(self):
         """Save messages to file"""
@@ -165,7 +164,7 @@ class MessageManager:
             str: Decrypted message
         """
         try:
-            print(f"🔓 Decrypting message for {username}...")
+            #print(f"🔓 Decrypting message for {username}...")
             
             # If private_key_pem is already a decrypted key object, use it directly
             if hasattr(private_key_pem, 'decrypt'):
@@ -188,7 +187,7 @@ class MessageManager:
                 )
             )
             
-            print(f"✅ Message decrypted successfully for {username}!")
+            #print(f"✅ Message decrypted successfully for {username}!")
             return decrypted_message.decode('utf-8')
             
         except Exception as e:

@@ -93,14 +93,14 @@ def display_menu(is_logged_in):
         print("1. View my details")
         print("2. View user details")
         print("3. List all users")
-        print("4. Update public keys")
-        print("5. Send message")
-        print("6. View my messages")
-        print("7. View conversation")
-        print("8. List conversations")
-        print("9. RSA Attack Demonstration")
-        print("10. Logout")
-        print("11. Exit")
+        #print("4. Update public keys")
+        print("4. Send message")
+        print("5. View my messages")
+        print("6. View conversation")
+        print("7. List conversations")
+        print("8. RSA Attack Demonstration")
+        print("9. Logout")
+        print("10. Exit")
 
 def get_user_choice(is_logged_in):
     """

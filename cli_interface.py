@@ -45,23 +45,7 @@ class CLIInterface:
             email = email if email else None
             
             try:
-                key_size_input = input("Enter key size (default 2048, min 64 for educational purposes): ").strip()
-                key_size = int(key_size_input) if key_size_input else 2048
-                
-                if key_size < 64:
-                    print("⚠️  Key size must be at least 64 bits")
-                    return
-                elif key_size < 1024:
-                    print(f"🎓 Educational mode: Generating {key_size}-bit RSA keys")
-                    print("⚠️  Note: Keys smaller than 1024 bits are insecure and for learning only!")
-                    confirm = input("Continue? (y/n): ").strip().lower()
-                    if confirm != 'y':
-                        return
-                elif key_size > 4096:
-                    print(f"⚠️  Large key size ({key_size} bits) will take longer to generate")
-                    confirm = input("Continue? (y/n): ").strip().lower()
-                    if confirm != 'y':
-                        return
+                key_size = 2048
                         
             except ValueError:
                 key_size = 2048
@@ -161,27 +145,24 @@ class CLIInterface:
             # List all users
             display_all_users(self.registry)
         elif choice == '4':
-            # Update public keys
-            self.handle_update_public_keys()
-        elif choice == '5':
             # Send message
             self.messaging.handle_send_message()
-        elif choice == '6':
+        elif choice == '5':
             # View my messages
             self.messaging.handle_view_messages()
-        elif choice == '7':
+        elif choice == '6':
             # View conversation
             self.messaging.handle_view_conversation()
-        elif choice == '8':
+        elif choice == '7':
             # List conversations
             self.messaging.handle_list_conversations()
-        elif choice == '9':
+        elif choice == '8':
              #RSA Attack Demonstration
              self.run_attack_demonstration()
-        elif choice == '10':
+        elif choice == '9':
             # Logout
             self.handle_logout()
-        elif choice == '11':
+        elif choice == '10':
             # Exit
             return False
         else:
@@ -191,7 +172,7 @@ class CLIInterface:
     
     def run(self):
         """Main application loop"""
-        print_header()
+        print_header("Welcome")
         
         while True:
             try:
